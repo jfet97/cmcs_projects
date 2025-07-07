@@ -1,0 +1,30 @@
+{
+  "name": "brownian-motion-simulation",
+  "version": "1.0.0",
+  "description": "Brownian Motion Simulation with TypeScript and AgentScript",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "pnpm dev",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "brownian-motion",
+    "simulation",
+    "typescript",
+    "agentscript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.0.2"
+  },
+  "dependencies": {
+    "agentscript": "^0.10.26",
+    "chart.js": "^4.5.0"
+  }
+}
