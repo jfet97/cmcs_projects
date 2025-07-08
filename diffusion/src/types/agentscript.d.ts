@@ -7,8 +7,9 @@ declare module 'agentscript' {
   // Definiamo la forma di una collezione di turtles
   export interface Turtles {
     create(count: number, callback?: (turtle: any) => void): void;
-    ask(callback: (turtle: any) => void): void;
+    ask(callback: (turtle: any, i: number) => void): void;
     readonly length: number;
+    some: (callback: (turtle: any, i: number) => boolean) => boolean;
   }
 
   // Definiamo la classe base Turtle con le sue proprietà e metodi

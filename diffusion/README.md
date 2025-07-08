@@ -4,8 +4,10 @@ An interactive Brownian motion (random walk) simulation written in TypeScript wi
 
 ## Features
 
-- **Real-time simulation** of 100 particles following a random walk
+- **Real-time simulation** of 500 particles following a random walk
 - **Graphical visualization** of particles in a 2D world
+- **Advanced collision detection** with optimized spatial grid algorithm
+- **Multiple collision handling methods** (avoidance vs elastic collision)
 - **MSD Chart** (Mean Squared Displacement) showing temporal evolution
 - **Modern interface** with custom CSS
 - **Type-safe architecture** with TypeScript
@@ -76,11 +78,15 @@ diffusion/
 
 ## How It Works
 
-1. **Initialization**: 100 particles are created at the center of the world
-2. **Random Walk**: At each step, each particle moves in a random direction
-3. **Boundary Handling**: Particles bounce off the world boundaries
-4. **MSD Calculation**: Mean Squared Displacement is calculated for each timestep
-5. **Visualization**: The MSD chart is updated in real-time
+1. **Initialization**: 500 particles are created at the center of the world
+2. **Random Walk**: At each step, each particle attempts to move in a random direction
+3. **Collision Detection**: Advanced collision detection prevents particles from overlapping
+4. **Collision Handling**: Two methods available:
+   - **Collision Avoidance**: Particles try multiple random directions until finding a valid position
+   - **Elastic Collision**: Particles bounce off each other in a physically realistic manner
+5. **Boundary Handling**: Particles bounce off the world boundaries
+6. **MSD Calculation**: Mean Squared Displacement is calculated for each timestep
+7. **Visualization**: The MSD chart is updated in real-time
 
 ## Customization
 
@@ -88,15 +94,22 @@ You can modify simulation parameters in the `index.ts` file:
 
 ```typescript
 // Number of particles
-this.numParticles = 100;
+this.numParticles = 500;
 
 // Step size
-this.stepSize = 1.5;
+turtle.stepSize = 4;
 
 // Particle color and shape
-this.color = "blue";
-this.shape = "circle";
-this.size = 6;
+turtle.color = "blue";
+turtle.shape = "circle";
+turtle.size = 2;
+
+// Switch collision handling method
+// Method 1: Advanced collision avoidance (default)
+this.moveParticleWithCollisionAvoidance(turtle);
+
+// Method 2: Elastic collision (more realistic physics)
+// this.moveParticleWithElasticCollision(turtle);
 ```
 
 ## Scientific Theory
