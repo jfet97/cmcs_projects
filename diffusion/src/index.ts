@@ -22,46 +22,58 @@ class BrownianModel extends Model {
     canvas!: HTMLCanvasElement;
     ctx!: CanvasRenderingContext2D;
 
+    constructor(worldBounds: { minX: number; maxX: number; minY: number; maxY: number }) {
+      super(worldBounds)
+    }
+
     /**
      * Il metodo di avvio, chiamato una volta.
      */
     override startup() {
-        this.numParticles = 10;
+        this.numParticles = 500;
         this.msdData = [];
 
         // Ottieni il canvas e il contesto
         this.canvas = document.getElementById('world') as HTMLCanvasElement;
-        this.ctx = this.canvas.getContext('2d')!;
-        
+        const ctx = this.canvas.getContext('2d');
+        if (!ctx) {
+            throw new Error('Impossibile ottenere il contesto 2D del canvas');
+        }
+        this.ctx = ctx;
+
         // Creiamo le particelle usando this.turtles.create
         this.turtles.create(this.numParticles, (turtle: BrownianParticleTurtle) => {
-            // Posiziona la particella casualmente in TUTTO il canvas
-            const x = (Math.random() - 0.5) * this.canvas.width;
-            const y = (Math.random() - 0.5) * this.canvas.height;
+            
+            // const x = this.world.minX + Math.random() * (this.world.maxX - this.world.minX);
+            // const y = this.world.minY + Math.random() * (this.world.maxY - this.world.minY);
+
+            // iniziano al centro
+            const x = (Math.random() - 0.5) * 2
+            const y = (Math.random() - 0.5) * 2
             turtle.setxy(x, y);
-            
+
             // Inizializza le proprietà
-            turtle.stepSize = 2;
-            turtle.color = "purple";
+            turtle.stepSize = 4;
+            turtle.color = "blue";
             turtle.shape = "circle";
-            turtle.size = 5;
-            
+            turtle.size = 2;
+
             // Memorizza la posizione iniziale
             turtle.state = { x0: x, y0: y };
         });
 
+
         this.setupChart();
+        this.drawParticles();
     }
 
     /**
      * Eseguito ad ogni tick della simulazione.
      */
     override step() {
-        if (!this.turtles || this.turtles.length === 0) return;
-        
-        // --- CAMBIAMENTO CHIAVE #2: USA CONFINI DINAMICI ---
-        const boundX = this.canvas.width / 2;
-        const boundY = this.canvas.height / 2;
+        if (!this.turtles || this.turtles.length === 0) {
+            return;
+        }
 
         this.turtles.ask((turtle: BrownianParticleTurtle) => {
             const angle = Math.random() * 2 * Math.PI;
@@ -70,22 +82,20 @@ class BrownianModel extends Model {
 
             let newX = turtle.x + dx;
             let newY = turtle.y + dy;
-            
             // Gestione del rimbalzo usando i confini del canvas
-            if (newX > boundX || newX < -boundX) {
+            if (newX > this.world.maxX || newX < this.world.minX) {
                 newX = turtle.x - dx;
             }
-            if (newY > boundY || newY < -boundY) {
+            if (newY > this.world.maxY || newY < this.world.minY) {
                 newY = turtle.y - dy;
             }
-            
             turtle.setxy(newX, newY);
         });
 
         this.calculateAndPlotMSD();
         this.drawParticles();
     }
-    
+
     /**
      * Disegna manualmente le particelle sul canvas.
      */
@@ -107,7 +117,9 @@ class BrownianModel extends Model {
     }
     
     calculateAndPlotMSD() {
-        if (this.turtles.length === 0 || this.ticks % 10 !== 0) return; // Calcola meno spesso per performance
+        if (this.turtles.length === 0 || this.ticks % 10 !== 0) {
+            return; // Calcola meno spesso per performance
+        }
 
         let totalSquaredDisplacement = 0;
         this.turtles.ask((turtle: BrownianParticleTurtle) => {
@@ -119,14 +131,18 @@ class BrownianModel extends Model {
         const msd = totalSquaredDisplacement / this.turtles.length;
         this.msdData.push(msd);
         
-        this.chart.data.labels!.push(this.ticks); // Usa i tick reali come asse x
+        if (this.chart.data.labels) {
+            this.chart.data.labels.push(this.ticks); // Usa i tick reali come asse x
+        }
         this.chart.data.datasets[0].data.push(msd);
         this.chart.update('none');
     }
 
     setupChart() {
         const ctx = (document.getElementById('msd-chart') as HTMLCanvasElement)?.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+            return;
+        }
         this.chart = new Chart(ctx, { /* ...il codice del grafico rimane uguale... */
             type: 'line',
             data: {
@@ -154,15 +170,27 @@ class BrownianModel extends Model {
 
 // --- AVVIO SIMULAZIONE CON CONTROLLO FPS ---
 document.addEventListener('DOMContentLoaded', () => {
-  const model = new BrownianModel();
-  const worldElement = document.getElementById('world');
+  // Ottieni l'elemento canvas per determinare le sue dimensioni
+  const worldElement = document.getElementById('world') as HTMLCanvasElement;
   if (!worldElement) {
       console.error("Elemento #world non trovato!");
       return;
   }
   
+  // Imposta i bounds del modello basati sulle dimensioni reali del canvas
+  const halfWidth = worldElement.width / 2;
+  const halfHeight = worldElement.height / 2;
+  
+  const model = new BrownianModel({
+    minX: -halfWidth,
+    maxX: halfWidth,
+    minY: -halfHeight,
+    maxY: halfHeight
+  });
+  
   // Il World viene creato, ma non lo usiamo per il ciclo di animazione.
   new World(model, worldElement);
+  // model.setup()
 
   // Chiamiamo il nostro metodo di avvio.
   model.startup();
@@ -171,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // 1. Definiamo a quanti "passi al secondo" vogliamo andare.
   //    Meno è, più è lento. 20 è un buon valore per vedere bene.
-  const targetFPS = 20;
+  const targetFPS = 60;
   const frameInterval = 1000 / targetFPS; // Calcola il tempo in ms tra un passo e l'altro
 
   let lastTime = 0; // Memorizza il timestamp dell'ultimo passo eseguito

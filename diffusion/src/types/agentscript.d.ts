@@ -14,7 +14,7 @@ declare module 'agentscript' {
   // Definiamo la classe base Turtle con le sue proprietà e metodi
   export class Turtle {
     constructor(...args: any[]);
-    
+
     // Proprietà che stiamo usando nel nostro codice
     x: number;
     y: number;
@@ -39,6 +39,13 @@ declare module 'agentscript' {
     // Proprietà che stiamo usando
     turtles: Turtles;
     ticks: number;
+
+    world: {
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+    }
 
     // Metodi che stiamo usando
     startup(): void;
