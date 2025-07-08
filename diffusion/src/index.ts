@@ -48,8 +48,8 @@ class BrownianModel extends Model {
             // const y = this.world.minY + Math.random() * (this.world.maxY - this.world.minY);
 
             // iniziano al centro
-            const x = (Math.random() - 0.5) * 100
-            const y = (Math.random() - 0.5) * 100
+            const x = (Math.random() - 0.5) * 50
+            const y = (Math.random() - 0.5) * 50
             turtle.setxy(x, y);
 
             // Inizializza le proprietà
