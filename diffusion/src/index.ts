@@ -47,9 +47,15 @@ class BrownianModel extends Model {
             // const x = this.world.minX + Math.random() * (this.world.maxX - this.world.minX);
             // const y = this.world.minY + Math.random() * (this.world.maxY - this.world.minY);
 
-            // iniziano al centro
-            const x = (Math.random() - 0.5) * 50
-            const y = (Math.random() - 0.5) * 50
+            // iniziano al centro => plateau L^2 / 6
+            const radius = Math.sqrt(Math.random()) * 25; // Raggio massimo 25
+            const angle = Math.random() * 2 * Math.PI;    // Angolo casuale
+            const x = radius * Math.cos(angle);
+            const y = radius * Math.sin(angle);
+
+            // iniziano a caso ovunque => plateau L^2 / 3
+            // const x = (Math.random() - 0.5) * this.canvas.width
+            // const y = (Math.random() - 0.5) * this.canvas.height
             turtle.setxy(x, y);
 
             // Inizializza le proprietà
