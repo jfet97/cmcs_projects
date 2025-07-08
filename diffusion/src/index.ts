@@ -30,7 +30,7 @@ class BrownianModel extends Model {
      * Il metodo di avvio, chiamato una volta.
      */
     override startup() {
-        this.numParticles = 500;
+        this.numParticles = 2500;
         this.msdData = [];
 
         // Ottieni il canvas e il contesto
@@ -48,15 +48,15 @@ class BrownianModel extends Model {
             // const y = this.world.minY + Math.random() * (this.world.maxY - this.world.minY);
 
             // iniziano al centro
-            const x = (Math.random() - 0.5) * 2
-            const y = (Math.random() - 0.5) * 2
+            const x = (Math.random() - 0.5) * 100
+            const y = (Math.random() - 0.5) * 100
             turtle.setxy(x, y);
 
             // Inizializza le proprietà
             turtle.stepSize = 4;
             turtle.color = "blue";
             turtle.shape = "circle";
-            turtle.size = 2;
+            turtle.size = 1;
 
             // Memorizza la posizione iniziale
             turtle.state = { x0: x, y0: y };
@@ -231,7 +231,7 @@ class BrownianModel extends Model {
      */
     isPositionValidOptimized(turtle: BrownianParticleTurtle, x: number, y: number): boolean {
         // Dimensione della cella della griglia per l'ottimizzazione spaziale
-        const cellSize = turtle.size * 4; // Un po' più grande del diametro delle particelle
+        const cellSize = turtle.size * 8; // Un po' più grande del diametro delle particelle
         
         // Calcola le celle della griglia da controllare
         const minCellX = Math.floor((x - turtle.size * 2) / cellSize);
@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // 1. Definiamo a quanti "passi al secondo" vogliamo andare.
   //    Meno è, più è lento. 20 è un buon valore per vedere bene.
-  const targetFPS = 60;
+  const targetFPS = 30;
   const frameInterval = 1000 / targetFPS; // Calcola il tempo in ms tra un passo e l'altro
 
   let lastTime = 0; // Memorizza il timestamp dell'ultimo passo eseguito
