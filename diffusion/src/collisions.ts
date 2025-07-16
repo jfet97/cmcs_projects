@@ -1,5 +1,5 @@
 import { Model, Turtles } from "agentscript";
-import { BrownianParticleTurtle } from "./index";
+import { type BrownianParticleTurtle } from "./brownianModel";
 
 /**
  * Muove una particella evitando le collisioni con altre particelle e i confini.

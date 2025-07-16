@@ -1,6 +1,6 @@
 import { Turtles } from "agentscript";
 import { Chart, registerables } from "chart.js";
-import { type BrownianParticleTurtle } from ".";
+import { type BrownianParticleTurtle } from "./brownianModel";
 Chart.register(...registerables);
 
 /**

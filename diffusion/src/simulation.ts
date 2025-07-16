@@ -1,5 +1,5 @@
 import { Turtles } from "agentscript";
-import { type BrownianParticleTurtle } from ".";
+import { type BrownianParticleTurtle } from "./brownianModel";
 
 export class Simulation {
   canvas!: HTMLCanvasElement;
