@@ -1,7 +1,7 @@
 import { Model, Turtle, World } from "agentscript";
-import { Chart, registerables } from "chart.js";
-import { moveParticleWithCollisionAvoidance, moveParticleWithElasticCollision } from "./collisions";
-Chart.register(...registerables);
+
+import { moveParticleWithCollisionAvoidance } from "./collisions";
+import { MSDChart } from "./msd";
 
 export interface ParticleState {
   x0: number;
@@ -15,8 +15,8 @@ export interface BrownianParticleTurtle extends Turtle {
 
 class BrownianModel extends Model {
   numParticles!: number;
-  msdData!: number[];
-  chart!: Chart;
+  chart!: MSDChart;
+
   canvas!: HTMLCanvasElement;
   ctx!: CanvasRenderingContext2D;
 
@@ -45,7 +45,6 @@ class BrownianModel extends Model {
    */
   override startup(strategy: "center" | "random") {
     this.numParticles = 2500;
-    this.msdData = [];
 
     this.canvas = document.getElementById("world") as HTMLCanvasElement;
     const ctx = this.canvas.getContext("2d");
@@ -84,7 +83,7 @@ class BrownianModel extends Model {
       turtle.initialState = { x0: x, y0: y };
     });
 
-    this.setupChart();
+    this.chart = new MSDChart();
   }
 
   /**
@@ -96,16 +95,15 @@ class BrownianModel extends Model {
     }
 
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
-      // Usa uno dei seguenti metodi per gestire le collisioni:
-
-      // 1. Metodo avanzato con tentativi multipli (migliore per alta densità)
+      // should be better with high particles density
       moveParticleWithCollisionAvoidance(turtle, this.world, this.turtles);
 
-      // 2. Metodo con rimbalzo elastico (più realistico fisicamente)
-      moveParticleWithElasticCollision(turtle, this.world, this.turtles);
+      // more realistic
+      // moveParticleWithElasticCollision(turtle, this.world, this.turtles);
     });
 
-    this.calculateAndPlotMSD();
+    this.chart.plot(this.turtles, this.ticks, 10);
+
     this.drawParticles();
   }
 
@@ -127,59 +125,6 @@ class BrownianModel extends Model {
     });
 
     this.ctx.restore();
-  }
-
-  calculateAndPlotMSD() {
-    if (this.turtles.length === 0 || this.ticks % 10 !== 0) {
-      return; // Calcola meno spesso per performance
-    }
-
-    let totalSquaredDisplacement = 0;
-    this.turtles.ask((turtle: BrownianParticleTurtle) => {
-      const dx = turtle.x - turtle.initialState.x0;
-      const dy = turtle.y - turtle.initialState.y0;
-      totalSquaredDisplacement += dx * dx + dy * dy;
-    });
-
-    const msd = totalSquaredDisplacement / this.turtles.length;
-    this.msdData.push(msd);
-
-    if (this.chart.data.labels) {
-      this.chart.data.labels.push(this.ticks); // Usa i tick reali come asse x
-    }
-    this.chart.data.datasets[0].data.push(msd);
-    this.chart.update("none");
-  }
-
-  setupChart() {
-    const ctx = (document.getElementById("msd-chart") as HTMLCanvasElement)?.getContext("2d");
-    if (!ctx) {
-      return;
-    }
-    this.chart = new Chart(ctx, {
-      /* ...il codice del grafico rimane uguale... */ type: "line",
-      data: {
-        labels: [],
-        datasets: [
-          {
-            label: "Mean Squared Displacement (MSD)",
-            data: [],
-            borderColor: "rgba(255, 99, 132, 1)",
-            backgroundColor: "rgba(255, 99, 132, 0.5)",
-            borderWidth: 2,
-            pointRadius: 0
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { title: { display: true, text: "Time Step" } },
-          y: { title: { display: true, text: "MSD" }, beginAtZero: true }
-        }
-      }
-    });
   }
 }
 
