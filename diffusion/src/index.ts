@@ -1,17 +1,15 @@
 import { Model, Turtle, World } from 'agentscript';
 import { Chart, registerables } from 'chart.js';
-
+import { moveParticleWithCollisionAvoidance, moveParticleWithElasticCollision } from './collisions';
 Chart.register(...registerables);
 
-interface ParticleState {
+export interface ParticleState {
     x0: number;
     y0: number;
 }
 
-// Estendiamo la definizione di Turtle per includere le nostre proprietà custom
-// Questo rende il type casting più pulito dopo.
-interface BrownianParticleTurtle extends Turtle {
-    state: ParticleState;
+export interface BrownianParticleTurtle extends Turtle {
+    initialState: ParticleState;
     stepSize: number;
 }
 
@@ -26,55 +24,71 @@ class BrownianModel extends Model {
       super(worldBounds)
     }
 
+    beginFromCenter(maxRadius = 10) {
+      // the turtle will start quite near the center => plateau L^2 / 6
+      const radius = Math.sqrt(Math.random()) * maxRadius; // max radius
+      const angle = Math.random() * 2 * Math.PI;           // random angle
+      const x = radius * Math.cos(angle);
+      const y = radius * Math.sin(angle);
+      return { x, y}
+    }
+
+    beginRandomly() {
+      // start randomly in the canvas => plateau L^2 / 3
+      const x = (Math.random() - 0.5) * this.canvas.width;
+      const y = (Math.random() - 0.5) * this.canvas.height;
+      return { x, y };
+    }
+
     /**
-     * Il metodo di avvio, chiamato una volta.
+     * Executed once, at the beginning, to config the simulation
      */
-    override startup() {
+    override startup(strategy: "center" | "random") {
         this.numParticles = 2500;
         this.msdData = [];
 
-        // Ottieni il canvas e il contesto
         this.canvas = document.getElementById('world') as HTMLCanvasElement;
         const ctx = this.canvas.getContext('2d');
         if (!ctx) {
-            throw new Error('Impossibile ottenere il contesto 2D del canvas');
+            throw new Error(`Cannot get 2D canvas' context`);
         }
         this.ctx = ctx;
 
-        // Creiamo le particelle usando this.turtles.create
+        // setup turtles
         this.turtles.create(this.numParticles, (turtle: BrownianParticleTurtle) => {
-            
-            // const x = this.world.minX + Math.random() * (this.world.maxX - this.world.minX);
-            // const y = this.world.minY + Math.random() * (this.world.maxY - this.world.minY);
+            let [x, y] = [0, 0]
 
-            // iniziano al centro => plateau L^2 / 6
-            const radius = Math.sqrt(Math.random()) * 25; // Raggio massimo 25
-            const angle = Math.random() * 2 * Math.PI;    // Angolo casuale
-            const x = radius * Math.cos(angle);
-            const y = radius * Math.sin(angle);
+            switch(strategy) {
+              case "center": {
+                const { x: _x, y: _y } = this.beginFromCenter(25)
+                x = _x
+                y = _y
+                break
+              }
+              case "random": {
+                const { x: _x, y: _y } = this.beginRandomly()
+                x = _x
+                y = _y
+                break
+              }
+            }
 
-            // iniziano a caso ovunque => plateau L^2 / 3
-            // const x = (Math.random() - 0.5) * this.canvas.width
-            // const y = (Math.random() - 0.5) * this.canvas.height
             turtle.setxy(x, y);
 
-            // Inizializza le proprietà
             turtle.stepSize = 4;
             turtle.color = "blue";
             turtle.shape = "circle";
             turtle.size = 1;
 
-            // Memorizza la posizione iniziale
-            turtle.state = { x0: x, y0: y };
+            // store initial position
+            turtle.initialState = { x0: x, y0: y };
         });
 
-
         this.setupChart();
-        this.drawParticles();
     }
 
     /**
-     * Eseguito ad ogni tick della simulazione.
+     * Executed at each tick
      */
     override step() {
         if (!this.turtles || this.turtles.length === 0) {
@@ -85,10 +99,10 @@ class BrownianModel extends Model {
             // Usa uno dei seguenti metodi per gestire le collisioni:
             
             // 1. Metodo avanzato con tentativi multipli (migliore per alta densità)
-            this.moveParticleWithCollisionAvoidance(turtle);
+            moveParticleWithCollisionAvoidance(turtle, this.world, this.turtles);
             
             // 2. Metodo con rimbalzo elastico (più realistico fisicamente)
-            // this.moveParticleWithElasticCollision(turtle);
+            moveParticleWithElasticCollision(turtle, this.world, this.turtles);
         });
 
         this.calculateAndPlotMSD();
@@ -122,8 +136,8 @@ class BrownianModel extends Model {
 
         let totalSquaredDisplacement = 0;
         this.turtles.ask((turtle: BrownianParticleTurtle) => {
-            const dx = turtle.x - turtle.state.x0;
-            const dy = turtle.y - turtle.state.y0;
+            const dx = turtle.x - turtle.initialState.x0;
+            const dy = turtle.y - turtle.initialState.y0;
             totalSquaredDisplacement += dx * dx + dy * dy;
         });
 
@@ -166,150 +180,7 @@ class BrownianModel extends Model {
         });
     }
 
-    /**
-     * Muove una particella evitando le collisioni con altre particelle e i confini.
-     * Utilizza un approccio iterativo per trovare una posizione valida.
-     */
-    moveParticleWithCollisionAvoidance(turtle: BrownianParticleTurtle) {
-        const maxAttempts = 10; // Massimo numero di tentativi per trovare una posizione valida
-        let attempts = 0;
-        
-        while (attempts < maxAttempts) {
-            // Genera un movimento casuale
-            const angle = Math.random() * 2 * Math.PI;
-            const dx = turtle.stepSize * Math.cos(angle);
-            const dy = turtle.stepSize * Math.sin(angle);
-
-            let newX = turtle.x + dx;
-            let newY = turtle.y + dy;
-
-            // Controlla i confini del mondo e applica il rimbalzo
-            if (newX > this.world.maxX) {
-                newX = this.world.maxX - (newX - this.world.maxX); // Rimbalzo
-            } else if (newX < this.world.minX) {
-                newX = this.world.minX + (this.world.minX - newX); // Rimbalzo
-            }
-            
-            if (newY > this.world.maxY) {
-                newY = this.world.maxY - (newY - this.world.maxY); // Rimbalzo
-            } else if (newY < this.world.minY) {
-                newY = this.world.minY + (this.world.minY - newY); // Rimbalzo
-            }
-
-            // Verifica se la nuova posizione è libera da collisioni
-            if (this.isPositionValidOptimized(turtle, newX, newY)) {
-                turtle.setxy(newX, newY);
-                return; // Posizione valida trovata, esci
-            }
-            
-            attempts++;
-        }
-        
-        // Se non troviamo una posizione valida dopo maxAttempts, 
-        // la particella rimane nella posizione attuale
-        // Questo previene loop infiniti in situazioni di alta densità
-    }
-
-    /**
-     * Verifica se una posizione è valida per una particella (senza collisioni).
-     */
-    isPositionValid(turtle: BrownianParticleTurtle, x: number, y: number): boolean {
-        // Controlla collisioni con altre particelle
-        let hasCollision = false;
-        
-        this.turtles.ask((other: BrownianParticleTurtle) => {
-            if (other !== turtle && !hasCollision) {
-                const distance = Math.sqrt((other.x - x) ** 2 + (other.y - y) ** 2);
-                const minDistance = turtle.size + other.size;
-                
-                if (distance < minDistance) {
-                    hasCollision = true;
-                }
-            }
-        });
-        
-        return !hasCollision; // Posizione valida se non ci sono collisioni
-    }
-
-    /**
-     * Versione ottimizzata per verificare le collisioni usando una griglia spaziale.
-     * Questa funzione è più efficiente quando ci sono molte particelle.
-     */
-    isPositionValidOptimized(turtle: BrownianParticleTurtle, x: number, y: number): boolean {
-        // Dimensione della cella della griglia per l'ottimizzazione spaziale
-        const cellSize = turtle.size * 8; // Un po' più grande del diametro delle particelle
-        
-        // Calcola le celle della griglia da controllare
-        const minCellX = Math.floor((x - turtle.size * 2) / cellSize);
-        const maxCellX = Math.floor((x + turtle.size * 2) / cellSize);
-        const minCellY = Math.floor((y - turtle.size * 2) / cellSize);
-        const maxCellY = Math.floor((y + turtle.size * 2) / cellSize);
-        
-        // Controlla solo le particelle nelle celle vicine
-        let hasCollision = false;
-        
-        this.turtles.ask((other: BrownianParticleTurtle) => {
-            if (other !== turtle && !hasCollision) {
-                // Calcola la cella dell'altra particella
-                const otherCellX = Math.floor(other.x / cellSize);
-                const otherCellY = Math.floor(other.y / cellSize);
-                
-                // Controlla solo se è in una cella vicina
-                if (otherCellX >= minCellX && otherCellX <= maxCellX &&
-                    otherCellY >= minCellY && otherCellY <= maxCellY) {
-                    
-                    const distance = Math.sqrt((other.x - x) ** 2 + (other.y - y) ** 2);
-                    const minDistance = turtle.size + other.size;
-                    
-                    if (distance < minDistance) {
-                        hasCollision = true;
-                    }
-                }
-            }
-        });
-        
-        return !hasCollision;
-   }
-
-    /**
-     * Alternativa: gestione delle collisioni con rimbalzo elastico.
-     * Questa versione simula un rimbalzo più realistico tra le particelle.
-     */
-    moveParticleWithElasticCollision(turtle: BrownianParticleTurtle) {
-        const angle = Math.random() * 2 * Math.PI;
-        const dx = turtle.stepSize * Math.cos(angle);
-        const dy = turtle.stepSize * Math.sin(angle);
-
-        let newX = turtle.x + dx;
-        let newY = turtle.y + dy;
-
-        // Gestione rimbalzo sui confini
-        if (newX > this.world.maxX || newX < this.world.minX) {
-            newX = turtle.x - dx; // Rimbalzo semplice
-        }
-        if (newY > this.world.maxY || newY < this.world.minY) {
-            newY = turtle.y - dy; // Rimbalzo semplice
-        }
-
-        // Controllo collisioni con rimbalzo elastico
-        let collisionDetected = false;
-        this.turtles.ask((other: BrownianParticleTurtle) => {
-            if (other !== turtle && !collisionDetected) {
-                const distance = Math.sqrt((other.x - newX) ** 2 + (other.y - newY) ** 2);
-                if (distance < turtle.size + other.size) {
-                    // Calcola l'angolo di collisione e rimbalza
-                    const collisionAngle = Math.atan2(other.y - turtle.y, other.x - turtle.x);
-                    const bounceAngle = collisionAngle + Math.PI; // Direzione opposta
-                    
-                    newX = turtle.x + turtle.stepSize * Math.cos(bounceAngle);
-                    newY = turtle.y + turtle.stepSize * Math.sin(bounceAngle);
-                    collisionDetected = true;
-                }
-            }
-        });
-
-        turtle.setxy(newX, newY);
-    }
+    
 
 }
 
@@ -338,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // model.setup()
 
   // Chiamiamo il nostro metodo di avvio.
-  model.startup();
+  model.startup("center");
 
   // --- LOGICA PER RALLENTARE LA SIMULAZIONE ---
   

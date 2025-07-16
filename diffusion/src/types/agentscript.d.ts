@@ -23,7 +23,6 @@ declare module 'agentscript' {
     shape: string;
     size: number;
     stepSize: number;
-    state: { x0: number; y0: number };
     world: {
         width: number;
         height: number;
@@ -49,7 +48,7 @@ declare module 'agentscript' {
     }
 
     // Metodi che stiamo usando
-    startup(): void;
+    startup(strategy: "center" | "random"): void;
     step(): void;
   }
 
