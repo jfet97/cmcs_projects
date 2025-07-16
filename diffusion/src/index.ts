@@ -32,14 +32,14 @@ class BrownianModel extends Model {
     const angle = Math.random() * 2 * Math.PI; // random angle
     const x = radius * Math.cos(angle);
     const y = radius * Math.sin(angle);
-    return { x, y };
+    return [x, y] as const;
   }
 
   beginRandomly() {
     // start randomly in the canvas => plateau L^2 / 3
     const x = (Math.random() - 0.5) * this.canvas.width;
     const y = (Math.random() - 0.5) * this.canvas.height;
-    return { x, y };
+    return [x, y] as const;
   }
 
   /**
@@ -50,24 +50,19 @@ class BrownianModel extends Model {
 
     // setup turtles
     this.turtles.create(this.numParticles, (turtle: BrownianParticleTurtle) => {
-      let [x, y] = [0, 0];
-
+      let xy: readonly [number, number] = [0, 0];
       switch (strategy) {
         case "center": {
-          const { x: _x, y: _y } = this.beginFromCenter(25);
-          x = _x;
-          y = _y;
+          xy = this.beginFromCenter(25);
           break;
         }
         case "random": {
-          const { x: _x, y: _y } = this.beginRandomly();
-          x = _x;
-          y = _y;
+          xy = this.beginRandomly();
           break;
         }
       }
 
-      turtle.setxy(x, y);
+      turtle.setxy(...xy);
 
       turtle.stepSize = 4;
       turtle.color = "blue";
@@ -75,7 +70,7 @@ class BrownianModel extends Model {
       turtle.size = 1;
 
       // store initial position
-      turtle.initialState = { x0: x, y0: y };
+      turtle.initialState = { x0: turtle.x, y0: turtle.y };
     });
 
     this.chart = new MSDChart(this.turtles);
