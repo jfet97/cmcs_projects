@@ -1,7 +1,7 @@
 import { Model, Turtle } from "agentscript";
 import { MSDChart } from "./msd";
 import { Simulation } from "./simulation";
-import { moveParticleWithCollisionAvoidance } from "./collisions";
+import { createSpatialGrid, moveParticleWithOptimizedCollisions } from "./collisions";
 
 export interface ParticleState {
   x0: number;
@@ -12,6 +12,8 @@ export interface BrownianParticleTurtle extends Turtle {
   initialState: ParticleState;
   stepSize: number;
 }
+
+const TURTLE_SIZE = 1;
 
 export class BrownianModel extends Model {
   numParticles!: number;
@@ -52,7 +54,7 @@ export class BrownianModel extends Model {
    * Executed once, at the beginning, to config the simulation
    */
   override startup(strategy: "center" | "random") {
-    this.numParticles = 2500;
+    this.numParticles = 4000;
 
     // setup turtles
     this.turtles.create(this.numParticles, (turtle: BrownianParticleTurtle) => {
@@ -73,7 +75,7 @@ export class BrownianModel extends Model {
       turtle.stepSize = 4;
       turtle.color = "blue";
       turtle.shape = "circle";
-      turtle.size = 1;
+      turtle.size = TURTLE_SIZE;
 
       // store initial position
       turtle.initialState = { x0: turtle.x, y0: turtle.y };
@@ -91,9 +93,11 @@ export class BrownianModel extends Model {
       return;
     }
 
+    const grid = createSpatialGrid(this.turtles, TURTLE_SIZE * 2);
+
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
       // should be better with high particles density
-      moveParticleWithCollisionAvoidance(turtle, this.world, this.turtles);
+      moveParticleWithOptimizedCollisions(turtle, this.world, grid, TURTLE_SIZE * 2);
 
       // more realistic
       // moveParticleWithElasticCollision(turtle, this.world, this.turtles);
