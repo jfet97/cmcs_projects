@@ -24,8 +24,10 @@ Chart.register(...registerables);
 export class MSDChart {
   chart!: Chart;
   msdData: number[];
-  constructor() {
+  turtles!: Turtles;
+  constructor(turtles: Turtles) {
     this.msdData = [];
+    this.turtles = turtles;
 
     const ctx = (document.getElementById("msd-chart") as HTMLCanvasElement)?.getContext("2d");
     if (!ctx) {
@@ -57,21 +59,21 @@ export class MSDChart {
     });
   }
 
-  plot(turtles: Turtles, ticks: number, skip = 1) {
-    if (turtles.length === 0 || ticks % skip !== 0) {
+  plot(ticks: number, skip = 1) {
+    if (this.turtles.length === 0 || ticks % skip !== 0) {
       // for performances reason, like if skip == 10 then we skip 9 ticks out of 10
       return;
     }
 
     let totalSquaredDisplacement = 0;
 
-    turtles.ask((turtle: BrownianParticleTurtle) => {
+    this.turtles.ask((turtle: BrownianParticleTurtle) => {
       const dx = turtle.x - turtle.initialState.x0;
       const dy = turtle.y - turtle.initialState.y0;
       totalSquaredDisplacement += dx * dx + dy * dy;
     });
 
-    const msd = totalSquaredDisplacement / turtles.length;
+    const msd = totalSquaredDisplacement / this.turtles.length;
     this.msdData.push(msd);
 
     if (this.chart.data.labels) {

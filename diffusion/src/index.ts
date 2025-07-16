@@ -2,6 +2,7 @@ import { Model, Turtle, World } from "agentscript";
 
 import { moveParticleWithCollisionAvoidance } from "./collisions";
 import { MSDChart } from "./msd";
+import { Simulation } from "./simulation";
 
 export interface ParticleState {
   x0: number;
@@ -16,6 +17,7 @@ export interface BrownianParticleTurtle extends Turtle {
 class BrownianModel extends Model {
   numParticles!: number;
   chart!: MSDChart;
+  simulation!: Simulation;
 
   canvas!: HTMLCanvasElement;
   ctx!: CanvasRenderingContext2D;
@@ -45,13 +47,6 @@ class BrownianModel extends Model {
    */
   override startup(strategy: "center" | "random") {
     this.numParticles = 2500;
-
-    this.canvas = document.getElementById("world") as HTMLCanvasElement;
-    const ctx = this.canvas.getContext("2d");
-    if (!ctx) {
-      throw new Error(`Cannot get 2D canvas' context`);
-    }
-    this.ctx = ctx;
 
     // setup turtles
     this.turtles.create(this.numParticles, (turtle: BrownianParticleTurtle) => {
@@ -83,7 +78,8 @@ class BrownianModel extends Model {
       turtle.initialState = { x0: x, y0: y };
     });
 
-    this.chart = new MSDChart();
+    this.chart = new MSDChart(this.turtles);
+    this.simulation = new Simulation(this.turtles);
   }
 
   /**
@@ -102,29 +98,8 @@ class BrownianModel extends Model {
       // moveParticleWithElasticCollision(turtle, this.world, this.turtles);
     });
 
-    this.chart.plot(this.turtles, this.ticks, 10);
-
-    this.drawParticles();
-  }
-
-  /**
-   * Disegna manualmente le particelle sul canvas.
-   */
-  drawParticles() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    this.ctx.save();
-    this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-
-    // Disegna ogni particella
-    this.turtles.ask((turtle: BrownianParticleTurtle) => {
-      this.ctx.beginPath();
-      this.ctx.arc(turtle.x, turtle.y, turtle.size, 0, 2 * Math.PI);
-      this.ctx.fillStyle = turtle.color;
-      this.ctx.fill();
-    });
-
-    this.ctx.restore();
+    this.chart.plot(this.ticks, 10);
+    this.simulation.drawParticles();
   }
 }
 
