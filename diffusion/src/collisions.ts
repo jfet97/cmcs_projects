@@ -67,12 +67,34 @@ function getNearbyTurtles(
 }
 
 /**
- * Funzione unificata e ottimizzata che muove una particella gestendo
- * sia il rimbalzo sui bordi che le collisioni elastiche con le altre particelle.
+ * Moves a Brownian particle (turtle) within the simulation world, handling boundary conditions
+ * and optimized collision detection using a spatial grid. The particle's movement is randomized,
+ * and collisions with nearby particles are detected and resolved by simulating a simple bounce.
  *
- * @param turtle La tartaruga da muovere.
- * @param world I confini del mondo.
- * @param grid La griglia spaziale pre-calcolata per il tick corrente.
+ * @param turtle - The Brownian particle to move.
+ * @param world - The simulation world boundaries.
+ * @param grid - The spatial grid used for efficient collision detection.
+ * @param size - The size of each cell in the spatial grid.
+ *
+ * @remarks
+ * - Boundary conditions are handled by reflecting the particle off the world edges.
+ * - Collisions are detected with nearby particles using the spatial grid for performance.
+ * - When a collision is detected, the particle is moved away from the colliding particle,
+ *   simulating a simple bounce (not a physically accurate elastic collision).
+ *
+ * **Differences from perfect elastic collision:**
+ * 1. **Momentum conservation**: Always bounces in opposite direction regardless of particle velocities
+ * 2. **Energy conservation**: Maintains constant stepSize instead of realistic energy transfer
+ * 3. **Bidirectional interaction**: Only the moving particle is affected, the collided particle stays stationary
+ * 4. **Realistic bounce angles**: Uses 180° bounce instead of physics-based reflection angles
+ *
+ * **Why this approach is suitable for Brownian motion:**
+ * - Maintains the random character of Brownian movement
+ * - Prevents particle clustering and overlap
+ * - Computationally efficient for large particle systems
+ * - Visually convincing for the simulation purpose
+ * - In real Brownian motion, collisions are primarily with fluid molecules (not visible particles)
+ * - The macroscopic effect is well-represented without microscopic physics complexity
  */
 export function moveParticleWithOptimizedCollisions(
   turtle: BrownianParticleTurtle,
