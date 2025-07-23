@@ -122,8 +122,6 @@ export function moveParticleWithOptimizedCollisions(
       newX = turtle.x + turtle.stepSize * Math.cos(bounceAngle);
       newY = turtle.y + turtle.stepSize * Math.sin(bounceAngle);
 
-      // After handling a collision, we break the loop for simplicity.
-      // Handling multiple simultaneous collisions is much more complex.
       // break;
     }
   }
