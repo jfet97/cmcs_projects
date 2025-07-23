@@ -1,23 +1,28 @@
 import { Model, Turtles } from "agentscript";
 import { type BrownianParticleTurtle } from "./brownianModel";
 
-// Tipo per la nostra griglia spaziale. La chiave è una stringa "x,y" che rappresenta la cella.
-type SpatialGrid = Map<string, BrownianParticleTurtle[]>;
+// a spacial grid is a map where the key is a string representation of the cell coordinates
+export interface SpatialGrid {
+  grid: Map<`${number},${number}`, BrownianParticleTurtle[]>;
+  size: number;
+}
 
 /**
- * Crea e popola una griglia spaziale per ottimizzare la ricerca dei vicini.
- * Questa funzione va chiamata UNA SOLA VOLTA per ogni tick della simulazione.
- * @param turtles L'insieme di tutte le tartarughe.
- * @param cellSize La dimensione di una cella della griglia.
- * @returns Una mappa che rappresenta la griglia.
+ * Creates a spatial grid mapping cell coordinates to arrays of turtles (particles).
+ * Each turtle is assigned to a grid cell based on its position and the specified cell size.
+ * This grid can be used to efficiently query nearby particles for collision detection or other spatial operations.
+ *
+ * @param turtles - The collection of BrownianParticleTurtle instances to be placed in the grid.
+ * @param cellSize - The size of each grid cell, used to determine cell coordinates for each turtle.
+ * @returns A SpatialGrid, which is a Map where keys are cell coordinates in the format "cellX,cellY" and values are arrays of turtles in those cells.
  */
 export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGrid {
-  const grid: SpatialGrid = new Map();
+  const grid: SpatialGrid["grid"] = new Map();
 
   turtles.ask((turtle: BrownianParticleTurtle) => {
     const cellX = Math.floor(turtle.x / cellSize);
     const cellY = Math.floor(turtle.y / cellSize);
-    const key = `${cellX},${cellY}`;
+    const key = `${cellX},${cellY}` as const;
 
     if (!grid.has(key)) {
       grid.set(key, []);
@@ -25,32 +30,33 @@ export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGr
     grid.get(key)!.push(turtle);
   });
 
-  return grid;
+  return {
+    grid,
+    size: cellSize
+  };
 }
 
 /**
- * Recupera le tartarughe vicine a una data posizione usando la griglia spaziale.
- * Controlla la cella della posizione e tutte le 8 celle circostanti.
- * @param x Posizione x.
- * @param y Posizione y.
- * @param grid La griglia spaziale pre-calcolata.
- * @param cellSize La dimensione della cella.
- * @returns Un array di tartarughe potenzialmente in collisione.
+ * Retrieves all BrownianParticleTurtle instances located in the 3x3 grid cells surrounding a given (x, y) position.
+ *
+ * @param x - The x-coordinate of the position to search around.
+ * @param y - The y-coordinate of the position to search around.
+ * @param grid - The spatial grid containing turtles, along with the cell size.
+ * @returns An array of BrownianParticleTurtle objects found in the neighboring cells.
  */
 function getNearbyTurtles(
   x: number,
   y: number,
-  grid: SpatialGrid,
-  cellSize: number
+  { grid, size }: SpatialGrid
 ): BrownianParticleTurtle[] {
   const nearbyTurtles: BrownianParticleTurtle[] = [];
-  const mainCellX = Math.floor(x / cellSize);
-  const mainCellY = Math.floor(y / cellSize);
+  const mainCellX = Math.floor(x / size);
+  const mainCellY = Math.floor(y / size);
 
-  // Itera sulla griglia 3x3 di celle intorno alla posizione data
+  // iterate through the 3x3 grid cells surrounding the main cell
   for (let i = -1; i <= 1; i++) {
     for (let j = -1; j <= 1; j++) {
-      const key = `${mainCellX + i},${mainCellY + j}`;
+      const key = `${mainCellX + i},${mainCellY + j}` as const;
       if (grid.has(key)) {
         nearbyTurtles.push(...grid.get(key)!);
       }
@@ -71,10 +77,9 @@ function getNearbyTurtles(
 export function moveParticleWithOptimizedCollisions(
   turtle: BrownianParticleTurtle,
   world: Model["world"],
-  grid: SpatialGrid,
-  cellSize: number
+  { grid, size }: SpatialGrid
 ) {
-  // 1. Calcola il movimento casuale proposto
+  // casual movement
   const angle = Math.random() * 2 * Math.PI;
   const dx = turtle.stepSize * Math.cos(angle);
   const dy = turtle.stepSize * Math.sin(angle);
@@ -82,7 +87,7 @@ export function moveParticleWithOptimizedCollisions(
   let newX = turtle.x + dx;
   let newY = turtle.y + dy;
 
-  // 2. Gestione del rimbalzo sui confini del mondo (versione robusta)
+  // handle boundary conditions
   if (newX > world.maxX) {
     newX = world.maxX - (newX - world.maxX);
   } else if (newX < world.minX) {
@@ -95,33 +100,34 @@ export function moveParticleWithOptimizedCollisions(
     newY = world.minY + (world.minY - newY);
   }
 
-  // 3. Controllo collisioni con altre particelle usando la griglia
-  const nearbyTurtles = getNearbyTurtles(newX, newY, grid, cellSize);
+  // check for collisions with other turtles surrounding the new position
+  const nearbyTurtles = getNearbyTurtles(newX, newY, { grid, size });
 
   for (const other of nearbyTurtles) {
-    // Non collidere con se stessi
+    // ignore self-collision
     if (other === turtle) continue;
 
     const distance = Math.sqrt((other.x - newX) ** 2 + (other.y - newY) ** 2);
     const minDistance = turtle.size + other.size;
 
+    // check for actual collision
     if (distance < minDistance) {
-      // Collisione rilevata! Calcola un rimbalzo.
-      // Questa è una simulazione di "repulsione", non un urto elastico perfetto
-      // che conserverebbe il momento, ma è visivamente efficace e performante.
+      // collision detected: simulate bounce
+      // this is a simple bounce, not a perfect elastic collision which would conserve momentum
+      // but it is visually effective and performant
       const collisionAngle = Math.atan2(other.y - turtle.y, other.x - turtle.x);
-      const bounceAngle = collisionAngle + Math.PI; // Inverti la direzione dalla collisione
+      const bounceAngle = collisionAngle + Math.PI; // invert the direction of movement
 
-      // Allontanati dalla collisione invece di fare il passo originale
+      // move away from the collision instead of taking the original step
       newX = turtle.x + turtle.stepSize * Math.cos(bounceAngle);
       newY = turtle.y + turtle.stepSize * Math.sin(bounceAngle);
 
-      // Dopo aver gestito una collisione, interrompiamo il ciclo per semplicità.
-      // Gestire collisioni multiple simultaneamente è molto più complesso.
-      break;
+      // After handling a collision, we break the loop for simplicity.
+      // Handling multiple simultaneous collisions is much more complex.
+      // break;
     }
   }
 
-  // 4. Applica la posizione finale
+  // update the turtle's position
   turtle.setxy(newX, newY);
 }

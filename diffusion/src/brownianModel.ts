@@ -93,11 +93,12 @@ export class BrownianModel extends Model {
       return;
     }
 
+    // to ensure that two turtles that are touching (i.e., at most diameter distance apart) are at most in adjacent cells, the cell side must be at least as large as the diameter.
     const grid = createSpatialGrid(this.turtles, TURTLE_SIZE * 2);
 
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
       // should be better with high particles density
-      moveParticleWithOptimizedCollisions(turtle, this.world, grid, TURTLE_SIZE * 2);
+      moveParticleWithOptimizedCollisions(turtle, this.world, grid);
 
       // more realistic
       // moveParticleWithElasticCollision(turtle, this.world, this.turtles);
