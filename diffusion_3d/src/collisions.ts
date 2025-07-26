@@ -7,6 +7,10 @@ export interface SpatialGrid {
   size: number;
 }
 
+function hash(x: number, y: number, z: number): `${number},${number},${number}` {
+  return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}` as const;
+}
+
 /**
  * Creates a spatial grid mapping cell coordinates to arrays of turtles (particles).
  * Each turtle is assigned to a grid cell based on its position and the specified cell size.
@@ -23,7 +27,7 @@ export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGr
     const cellX = Math.floor(turtle.x / cellSize);
     const cellY = Math.floor(turtle.y / cellSize);
     const cellZ = Math.floor(turtle.z / cellSize);
-    const key = `${cellX},${cellY},${cellZ}` as const;
+    const key = hash(cellX, cellY, cellZ);
 
     if (!grid.has(key)) {
       grid.set(key, []);
@@ -69,8 +73,8 @@ function updateParticleInGrid(
   const newCellY = Math.floor(newY / size);
   const newCellZ = Math.floor(newZ / size);
 
-  const oldKey = `${oldCellX},${oldCellY},${oldCellZ}` as const;
-  const newKey = `${newCellX},${newCellY},${newCellZ}` as const;
+  const oldKey = hash(oldCellX, oldCellY, oldCellZ);
+  const newKey = hash(newCellX, newCellY, newCellZ);
 
   // remove from old cell
   if (grid.has(oldKey)) {
@@ -113,7 +117,7 @@ function getNearbyTurtles(
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
       for (let dz = -1; dz <= 1; dz++) {
-        const key = `${mainCellX + dx},${mainCellY + dy},${mainCellZ + dz}` as const;
+        const key = hash(mainCellX + dx, mainCellY + dy, mainCellZ + dz);
         nearbyTurtles.push(...(grid.get(key) ?? []));
       }
     }
