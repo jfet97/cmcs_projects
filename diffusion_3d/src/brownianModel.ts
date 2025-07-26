@@ -15,6 +15,7 @@ export interface BrownianParticleTurtle extends Turtle3D {
 }
 
 const TURTLE_SIZE = 1;
+const STEP_SIZE = 2; // at least 2*TURTLE_SIZE
 
 export class BrownianModel extends Model3D {
   numParticles!: number;
@@ -75,7 +76,7 @@ export class BrownianModel extends Model3D {
       let xyz: readonly [number, number, number] = [0, 0, 0];
       switch (strategy) {
         case "center": {
-          xyz = this.beginFromCenter(25);
+          xyz = this.beginFromCenter(15);
           break;
         }
         case "random": {
@@ -86,7 +87,7 @@ export class BrownianModel extends Model3D {
 
       turtle.setxyz(...xyz);
 
-      turtle.stepSize = 4;
+      turtle.stepSize = STEP_SIZE;
       turtle.color = "blue";
       turtle.shape = "circle";
       turtle.size = TURTLE_SIZE;

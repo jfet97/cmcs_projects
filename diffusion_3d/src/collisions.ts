@@ -120,25 +120,6 @@ export function moveParticleWithOptimizedCollisions(
   let newY = turtle.y + dy;
   let newZ = turtle.z + dz;
 
-  // handle boundary conditions
-  if (newX > world.maxX) {
-    newX = world.maxX - (newX - world.maxX);
-  } else if (newX < world.minX) {
-    newX = world.minX + (world.minX - newX);
-  }
-
-  if (newY > world.maxY) {
-    newY = world.maxY - (newY - world.maxY);
-  } else if (newY < world.minY) {
-    newY = world.minY + (world.minY - newY);
-  }
-
-  if (newZ > world.maxZ) {
-    newZ = world.maxZ - (newZ - world.maxZ);
-  } else if (newZ < world.minZ) {
-    newZ = world.minZ + (world.minZ - newZ);
-  }
-
   // check for collisions with other turtles surrounding the new position
   const nearbyTurtles = getNearbyTurtles(newX, newY, newZ, { grid, size });
 
@@ -179,8 +160,28 @@ export function moveParticleWithOptimizedCollisions(
         // let the original random move happen, which will separate the two turtles
       }
 
+      // early exit the loop after handling the first collision
       // break;
     }
+  }
+
+  // handle boundary conditions
+  if (newX > world.maxX) {
+    newX = world.maxX - (newX - world.maxX);
+  } else if (newX < world.minX) {
+    newX = world.minX + (world.minX - newX);
+  }
+
+  if (newY > world.maxY) {
+    newY = world.maxY - (newY - world.maxY);
+  } else if (newY < world.minY) {
+    newY = world.minY + (world.minY - newY);
+  }
+
+  if (newZ > world.maxZ) {
+    newZ = world.maxZ - (newZ - world.maxZ);
+  } else if (newZ < world.minZ) {
+    newZ = world.minZ + (world.minZ - newZ);
   }
 
   // update the turtle's position

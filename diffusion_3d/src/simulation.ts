@@ -37,7 +37,9 @@ export class Simulation {
     this.camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
 
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
-    this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
+    const pixelRatio = window.devicePixelRatio || 1;
+    this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight, false);
+    this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setClearColor(0xffffff);
 
     // --- Particle System Setup ---
@@ -98,28 +100,22 @@ export class Simulation {
    * renders the small axes helper in the bottom-left corner
    */
   private renderAxes() {
-    // synchronize axesCamera orientation and position with the main camera
-    this.axesCamera.position.copy(this.camera.position); // copy position from main camera
-    this.axesCamera.quaternion.copy(this.camera.quaternion); // copy rotation from main camera
-    this.axesCamera.position.setLength(10); // keep a fixed distance from origin
+    this.axesCamera.position.copy(this.camera.position);
+    this.axesCamera.quaternion.copy(this.camera.quaternion);
+    this.axesCamera.position.setLength(10);
     this.axesCamera.lookAt(0, 0, 0);
 
-    // define the size and position of the small viewport for the axes helper
     const viewportSize = this.canvas.clientHeight / 4;
-    const margin = 20; // pixels from the left and bottom
+    const margin = 5;
 
-    // set viewport with margin from left and bottom
-    this.renderer.setViewport(
-      margin, // x position (from left)
-      margin, // y position (from bottom)
-      viewportSize,
-      viewportSize
-    );
+    this.renderer.setViewport(margin, margin, viewportSize, viewportSize);
+    this.renderer.setScissor(margin, margin, viewportSize, viewportSize);
+    this.renderer.setScissorTest(true);
 
-    // render the axes scene with the axes camera
     this.renderer.render(this.axesScene, this.axesCamera);
 
-    // reset the viewport to full size for the main render
+    // reset viewport and scissor
+    this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, this.canvas.clientWidth, this.canvas.clientHeight);
   }
 

@@ -7,9 +7,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // TOTAL WORLD SIZE HERE
-  const WORLD_WIDTH = 400;
-  const WORLD_HEIGHT = 400;
-  const WORLD_DEPTH = 400;
+  const WORLD_WIDTH = 300;
+  const WORLD_HEIGHT = 300;
+  const WORLD_DEPTH = 300;
   const NUM_PARTICLES = 20000;
 
   // world bounds object
@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   model.startup("center", NUM_PARTICLES);
 
   // --- animation Loop ---
-  const targetFPS = 60;
+  const targetFPS = 30;
   const frameInterval = 1000 / targetFPS;
   let lastTime = performance.now(); // Use performance.now for higher precision
 
