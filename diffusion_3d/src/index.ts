@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   model.startup("center", NUM_PARTICLES);
 
   // --- animation Loop ---
-  const targetFPS = 30;
+  const targetFPS = 60;
   const frameInterval = 1000 / targetFPS;
   let lastTime = performance.now(); // Use performance.now for higher precision
 
