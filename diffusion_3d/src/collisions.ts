@@ -38,6 +38,58 @@ export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGr
 }
 
 /**
+ * Updates the position of a turtle in the spatial grid.
+ * This function removes the turtle from its old cell and adds it to the new cell based on its updated position.
+ *
+ * @param turtle - The BrownianParticleTurtle whose position is being updated.
+ * @param grid - The spatial grid where turtles are stored, represented as a Map.
+ * @param size - The size of each cell in the grid.
+ * @param oldX - The previous x-coordinate of the turtle.
+ * @param oldY - The previous y-coordinate of the turtle.
+ * @param oldZ - The previous z-coordinate of the turtle.
+ * @param newX - The new x-coordinate of the turtle after movement.
+ * @param newY - The new y-coordinate of the turtle after movement.
+ * @param newZ - The new z-coordinate of the turtle after movement.
+ */
+function updateParticleInGrid(
+  turtle: BrownianParticleTurtle,
+  oldX: number,
+  oldY: number,
+  oldZ: number,
+  newX: number,
+  newY: number,
+  newZ: number,
+  { grid, size }: SpatialGrid
+) {
+  const oldCellX = Math.floor(oldX / size);
+  const oldCellY = Math.floor(oldY / size);
+  const oldCellZ = Math.floor(oldZ / size);
+
+  const newCellX = Math.floor(newX / size);
+  const newCellY = Math.floor(newY / size);
+  const newCellZ = Math.floor(newZ / size);
+
+  const oldKey = `${oldCellX},${oldCellY},${oldCellZ}` as const;
+  const newKey = `${newCellX},${newCellY},${newCellZ}` as const;
+
+  // remove from old cell
+  if (grid.has(oldKey)) {
+    const turtlesInOldCell = grid.get(oldKey)!;
+    const index = turtlesInOldCell.indexOf(turtle);
+    if (index !== -1) {
+      turtlesInOldCell.splice(index, 1);
+    }
+  }
+
+  // add to new cell
+  if (!grid.has(newKey)) {
+    grid.set(newKey, [turtle]);
+  } else {
+    grid.get(newKey)!.push(turtle);
+  }
+}
+
+/**
  * Retrieves all BrownianParticleTurtle instances located in the 3x3x3 grid cells surrounding a given (x, y, z) position.
  *
  * @param x - The x-coordinate of the position to search around.
@@ -62,10 +114,7 @@ function getNearbyTurtles(
     for (let dy = -1; dy <= 1; dy++) {
       for (let dz = -1; dz <= 1; dz++) {
         const key = `${mainCellX + dx},${mainCellY + dy},${mainCellZ + dz}` as const;
-
-        if (grid.has(key)) {
-          nearbyTurtles.push(...grid.get(key)!);
-        }
+        nearbyTurtles.push(...(grid.get(key) ?? []));
       }
     }
   }
@@ -115,6 +164,10 @@ export function moveParticleWithOptimizedCollisions(
   const dx = turtle.stepSize * Math.sin(theta) * Math.cos(phi);
   const dy = turtle.stepSize * Math.sin(theta) * Math.sin(phi);
   const dz = turtle.stepSize * Math.cos(theta);
+
+  const oldX = turtle.x;
+  const oldY = turtle.y;
+  const oldZ = turtle.z;
 
   let newX = turtle.x + dx;
   let newY = turtle.y + dy;
@@ -186,4 +239,5 @@ export function moveParticleWithOptimizedCollisions(
 
   // update the turtle's position
   turtle.setxyz(newX, newY, newZ);
+  updateParticleInGrid(turtle, oldX, oldY, oldZ, newX, newY, newZ, { grid, size });
 }

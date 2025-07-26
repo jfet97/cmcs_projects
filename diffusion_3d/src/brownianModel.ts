@@ -1,7 +1,7 @@
 import { Model3D, Turtle3D } from "agentscript";
 import { MSDChart } from "./msd";
 import { Simulation } from "./simulation";
-import { createSpatialGrid, moveParticleWithOptimizedCollisions } from "./collisions";
+import { createSpatialGrid, moveParticleWithOptimizedCollisions, SpatialGrid } from "./collisions";
 
 export interface ParticleState {
   x0: number;
@@ -21,6 +21,7 @@ export class BrownianModel extends Model3D {
   numParticles!: number;
   chart!: MSDChart;
   simulation!: Simulation;
+  grid!: SpatialGrid;
 
   // to avoid names collisions
   viewWidth: number;
@@ -110,6 +111,9 @@ export class BrownianModel extends Model3D {
 
     // a visual box to see the world boundaries
     this.simulation.addWorldBoundaryBox();
+
+    // to ensure that two turtles that are touching (i.e., at most diameter distance apart) are at most in adjacent cells, the cell side must be at least as large as the diameter.
+    this.grid = createSpatialGrid(this.turtles, TURTLE_SIZE * 2);
   }
 
   /**
@@ -120,12 +124,9 @@ export class BrownianModel extends Model3D {
       return;
     }
 
-    // to ensure that two turtles that are touching (i.e., at most diameter distance apart) are at most in adjacent cells, the cell side must be at least as large as the diameter.
-    const grid = createSpatialGrid(this.turtles, TURTLE_SIZE * 2);
-
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
       // should be better with high particles density
-      moveParticleWithOptimizedCollisions(turtle, this.world, grid);
+      moveParticleWithOptimizedCollisions(turtle, this.world, this.grid);
 
       // more realistic
       // moveParticleWithElasticCollision(turtle, this.world, this.turtles);
