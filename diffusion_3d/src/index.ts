@@ -7,10 +7,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // TOTAL WORLD SIZE HERE
-  const WORLD_WIDTH = 100;
-  const WORLD_HEIGHT = 100;
-  const WORLD_DEPTH = 50;
-  const NUM_PARTICLES = 5000;
+  const WORLD_WIDTH = 400;
+  const WORLD_HEIGHT = 400;
+  const WORLD_DEPTH = 400;
+  const NUM_PARTICLES = 20000;
 
   // world bounds object
   const bounds = {
