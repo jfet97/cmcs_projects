@@ -109,19 +109,6 @@ export function moveParticleWithOptimizedCollisions(
   let newX = turtle.x + dx;
   let newY = turtle.y + dy;
 
-  // handle boundary conditions
-  if (newX > world.maxX) {
-    newX = world.maxX - (newX - world.maxX);
-  } else if (newX < world.minX) {
-    newX = world.minX + (world.minX - newX);
-  }
-
-  if (newY > world.maxY) {
-    newY = world.maxY - (newY - world.maxY);
-  } else if (newY < world.minY) {
-    newY = world.minY + (world.minY - newY);
-  }
-
   // check for collisions with other turtles surrounding the new position
   const nearbyTurtles = getNearbyTurtles(newX, newY, { grid, size });
 
@@ -146,6 +133,19 @@ export function moveParticleWithOptimizedCollisions(
 
       // break;
     }
+  }
+
+  // handle boundary conditions
+  if (newX > world.maxX) {
+    newX = world.maxX - (newX - world.maxX);
+  } else if (newX < world.minX) {
+    newX = world.minX + (world.minX - newX);
+  }
+
+  if (newY > world.maxY) {
+    newY = world.maxY - (newY - world.maxY);
+  } else if (newY < world.minY) {
+    newY = world.minY + (world.minY - newY);
   }
 
   // update the turtle's position
