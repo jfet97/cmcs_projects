@@ -109,7 +109,7 @@ function updateParticleInGrid(
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         for (let dz = -1; dz <= 1; dz++) {
-          if (dx < 0 || dy < 0 || dz < 0) continue;
+          if (dx === 0 && dy === 0 && dz === 0) continue; // skip the current cell
           const key = hash(newX + dx, newY + dy, newZ + dz);
           links.push(key);
         }
