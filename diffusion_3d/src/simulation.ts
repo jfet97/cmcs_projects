@@ -55,6 +55,9 @@ export class Simulation {
     this.controls.enableDamping = true; // gives a nice sense of weight
     this.controls.dampingFactor = 0.05;
 
+    this.controls.enableZoom = true;
+    this.controls.zoomSpeed = 1.5;
+
     // --- Orientation Axes Helper Setup (Second Scene) ---
     this.axesScene = new THREE.Scene();
     this.axesHelper = new THREE.AxesHelper(5); // the number defines the size of the axes
@@ -77,7 +80,9 @@ export class Simulation {
     const distanceForWidth =
       this.dimensions.width / 2 / (Math.tan(fovInRadians / 2) * this.camera.aspect);
 
-    this.camera.position.z = Math.max(distanceForHeight, distanceForWidth) * 1.05; // 5% buffer
+    this.camera.position.x = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 5% buffer
+    this.camera.position.y = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 5% buffer
+    this.camera.position.z = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 5% buffer
     this.controls.update(); // important to update controls after manual camera change
   }
 
