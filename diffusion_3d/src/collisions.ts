@@ -1,9 +1,14 @@
 import { Model3D, Turtles } from "agentscript";
 import { type BrownianParticleTurtle } from "./brownianModel";
 
+interface SpatialGridEntry {
+  data: BrownianParticleTurtle[];
+  links: `${number},${number},${number}`[];
+}
+
 // a spacial grid is a map where the key is a string representation of the cell coordinates
 export interface SpatialGrid {
-  grid: Map<`${number},${number},${number}`, BrownianParticleTurtle[]>;
+  grid: Map<`${number},${number},${number}`, SpatialGridEntry>;
   size: number;
 }
 
@@ -30,9 +35,22 @@ export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGr
     const key = hash(cellX, cellY, cellZ);
 
     if (!grid.has(key)) {
-      grid.set(key, []);
+      const links: SpatialGridEntry["links"] = [];
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dz = -1; dz <= 1; dz++) {
+            if (dx === 0 && dy === 0 && dz === 0) continue; // skip the current cell
+            const key = hash(cellX + dx, cellY + dy, cellZ + dz);
+            links.push(key);
+          }
+        }
+      }
+
+      grid.set(key, { data: [turtle], links });
+    } else {
+      const entry = grid.get(key)!;
+      entry.data.push(turtle);
     }
-    grid.get(key)!.push(turtle);
   });
 
   return {
@@ -79,17 +97,28 @@ function updateParticleInGrid(
   // remove from old cell
   if (grid.has(oldKey)) {
     const turtlesInOldCell = grid.get(oldKey)!;
-    const index = turtlesInOldCell.indexOf(turtle);
+    const index = turtlesInOldCell.data.indexOf(turtle);
     if (index !== -1) {
-      turtlesInOldCell.splice(index, 1);
+      turtlesInOldCell.data.splice(index, 1);
     }
   }
 
   // add to new cell
   if (!grid.has(newKey)) {
-    grid.set(newKey, [turtle]);
+    const links: SpatialGridEntry["links"] = [];
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          if (dx < 0 || dy < 0 || dz < 0) continue;
+          const key = hash(newX + dx, newY + dy, newZ + dz);
+          links.push(key);
+        }
+      }
+    }
+
+    grid.set(newKey, { data: [turtle], links });
   } else {
-    grid.get(newKey)!.push(turtle);
+    grid.get(newKey)!.data.push(turtle);
   }
 }
 
@@ -113,14 +142,11 @@ function getNearbyTurtles(
   const mainCellY = Math.floor(y / size);
   const mainCellZ = Math.floor(z / size);
 
+  const key = hash(mainCellX, mainCellY, mainCellZ);
+
   // iterate through the 3x3x3 grid cells surrounding the main cell
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dz = -1; dz <= 1; dz++) {
-        const key = hash(mainCellX + dx, mainCellY + dy, mainCellZ + dz);
-        nearbyTurtles.push(...(grid.get(key) ?? []));
-      }
-    }
+  for (const link of grid.get(key)?.links ?? []) {
+    nearbyTurtles.push(...(grid.get(link)?.data ?? []));
   }
 
   return nearbyTurtles;
