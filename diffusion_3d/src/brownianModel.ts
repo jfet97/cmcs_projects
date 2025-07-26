@@ -15,7 +15,7 @@ export interface BrownianParticleTurtle extends Turtle3D {
 }
 
 const TURTLE_SIZE = 1;
-const STEP_SIZE = 2; // at least 2*TURTLE_SIZE
+const STEP_SIZE = TURTLE_SIZE * 2; // at least 2*TURTLE_SIZE
 
 export class BrownianModel extends Model3D {
   numParticles!: number;

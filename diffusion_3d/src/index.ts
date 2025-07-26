@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // TOTAL WORLD SIZE HERE
-  const SIZE = 200;
+  const SIZE = 150;
   const WORLD_WIDTH = SIZE;
   const WORLD_HEIGHT = SIZE;
   const WORLD_DEPTH = SIZE;
