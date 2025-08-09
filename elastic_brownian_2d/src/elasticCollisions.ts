@@ -159,45 +159,56 @@ export function moveLargeParticle(
 ) {
   if (!particle.isLarge) return;
 
+  // Account for particle radius to prevent going through walls
+  const radius = particle.size;
+  
+  // Limit velocity to prevent tunneling through boundaries
+  const maxStep = Math.min(world.maxX - world.minX, world.maxY - world.minY) / 10;
+  const currentStep = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+  if (currentStep > maxStep) {
+    const scale = maxStep / currentStep;
+    particle.vx *= scale;
+    particle.vy *= scale;
+  }
+
   // Move based on current velocity (from collisions)
   let newX = particle.x + particle.vx;
   let newY = particle.y + particle.vy;
-  
-  // Account for particle radius to prevent going through walls
-  const radius = particle.size;
 
-  // No friction - particles maintain momentum from collisions
-
-  // Handle boundary conditions with elastic reflection - more robust approach
+  // Handle boundary conditions with elastic reflection - robust approach
   let hitBoundary = false;
   
-  // X boundaries
-  if (newX + radius > world.maxX) {
-    newX = world.maxX - radius; // clamp to boundary
-    if (particle.vx > 0) particle.vx = -Math.abs(particle.vx); // ensure velocity points inward
+  // X boundaries - check both current and new position
+  if (newX + radius >= world.maxX) {
+    newX = world.maxX - radius - 0.1; // clamp with small buffer
+    particle.vx = -Math.abs(particle.vx); // ensure velocity points inward
     hitBoundary = true;
-  } else if (newX - radius < world.minX) {
-    newX = world.minX + radius; // clamp to boundary
-    if (particle.vx < 0) particle.vx = Math.abs(particle.vx); // ensure velocity points inward
+  } else if (newX - radius <= world.minX) {
+    newX = world.minX + radius + 0.1; // clamp with small buffer
+    particle.vx = Math.abs(particle.vx); // ensure velocity points inward
     hitBoundary = true;
   }
 
-  // Y boundaries
-  if (newY + radius > world.maxY) {
-    newY = world.maxY - radius; // clamp to boundary
-    if (particle.vy > 0) particle.vy = -Math.abs(particle.vy); // ensure velocity points inward
+  // Y boundaries - check both current and new position
+  if (newY + radius >= world.maxY) {
+    newY = world.maxY - radius - 0.1; // clamp with small buffer
+    particle.vy = -Math.abs(particle.vy); // ensure velocity points inward
     hitBoundary = true;
-  } else if (newY - radius < world.minY) {
-    newY = world.minY + radius; // clamp to boundary
-    if (particle.vy < 0) particle.vy = Math.abs(particle.vy); // ensure velocity points inward
+  } else if (newY - radius <= world.minY) {
+    newY = world.minY + radius + 0.1; // clamp with small buffer
+    particle.vy = Math.abs(particle.vy); // ensure velocity points inward
     hitBoundary = true;
   }
   
   // Apply slight velocity damping when hitting boundaries to prevent infinite bouncing
   if (hitBoundary) {
-    particle.vx *= 0.95;
-    particle.vy *= 0.95;
+    particle.vx *= 0.98;
+    particle.vy *= 0.98;
   }
+
+  // Final safety check - ensure particle stays within bounds
+  newX = Math.max(world.minX + radius, Math.min(world.maxX - radius, newX));
+  newY = Math.max(world.minY + radius, Math.min(world.maxY - radius, newY));
 
   particle.setxy(newX, newY);
 }

@@ -25,16 +25,24 @@ export class Simulation {
     }
     this.ctx = ctx;
 
-    // Set initial canvas size (matching default world size)
-    const initialSize = CONFIG.PHYSICS.worldSize; // Use the default world size from config
-    this.canvas.width = initialSize;
-    this.canvas.height = initialSize;
+    // Set initial canvas size (matching default world size: world goes from -worldSize to +worldSize)
+    const worldSize = CONFIG.PHYSICS.worldSize * 2; // Canvas must be 2x world size to show full world
+    
+    // Keep canvas resolution reasonable to avoid performance/memory issues
+    const canvasResolution = Math.min(800, worldSize);
+    this.canvas.width = canvasResolution;
+    this.canvas.height = canvasResolution;
+    
+    // Set visual size (constrained for UI)
+    const visualSize = Math.max(200, Math.min(600, worldSize * 0.8));
     
     // Set canvas style for clean appearance
     this.canvas.style.border = "1px solid #ccc";
     this.canvas.style.background = "white";
-    this.canvas.style.width = initialSize + 'px';
-    this.canvas.style.height = initialSize + 'px';
+    this.canvas.style.width = visualSize + 'px';
+    this.canvas.style.height = visualSize + 'px';
+    this.canvas.style.maxWidth = 'none';
+    this.canvas.style.maxHeight = 'none';
   }
 
   public drawParticles() {
@@ -165,14 +173,32 @@ export class Simulation {
 
   // Method to update canvas size when world size changes
   public updateCanvasSize(newSize: number) {
-    // Update canvas dimensions to match world size
-    const canvasSize = Math.max(200, Math.min(500, newSize));
-    this.canvas.width = canvasSize;
-    this.canvas.height = canvasSize;
+    console.log(`Updating canvas size to ${newSize}`);
     
-    // Also update CSS dimensions for proper display
-    this.canvas.style.width = canvasSize + 'px';
-    this.canvas.style.height = canvasSize + 'px';
+    // Keep canvas resolution reasonable to avoid performance/memory issues
+    const canvasResolution = Math.min(800, newSize);
+    this.canvas.width = canvasResolution;
+    this.canvas.height = canvasResolution;
+    
+    // Visual size should scale more directly with world size
+    // Scale based on newSize but keep it reasonable (150-600px)
+    const baseVisualSize = newSize * 1.5; // More direct scaling
+    const visualSize = Math.max(150, Math.min(600, baseVisualSize));
+    
+    console.log(`Setting visual size to ${visualSize}px (from world size ${newSize})`);
+    
+    // Force the visual update by directly setting CSS properties
+    this.canvas.style.width = visualSize + 'px';
+    this.canvas.style.height = visualSize + 'px';
+    this.canvas.style.maxWidth = 'none';
+    this.canvas.style.maxHeight = 'none';
+    
+    // Force a repaint by slightly changing the canvas and reverting
+    const tempWidth = this.canvas.style.width;
+    this.canvas.style.width = (visualSize + 1) + 'px';
+    setTimeout(() => {
+      this.canvas.style.width = tempWidth;
+    }, 10);
   }
 
   // Method to get current canvas image data (for screenshots, etc.)

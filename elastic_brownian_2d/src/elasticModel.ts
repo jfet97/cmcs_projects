@@ -179,17 +179,51 @@ export class ElasticModel extends Model {
   }
 
   public updateWorldSize(newSize: number) {
+    console.log(`Updating world size to ${newSize}`);
+    
+    // Save current large particle position and velocity
+    const currentX = this.largeParticle.x;
+    const currentY = this.largeParticle.y;
+    const currentVx = this.largeParticle.vx;
+    const currentVy = this.largeParticle.vy;
+    
     // Update world boundaries
     this.world.minX = -newSize;
     this.world.maxX = newSize;
     this.world.minY = -newSize;
     this.world.maxY = newSize;
     
-    // Update canvas size to match the field size slider value
-    this.simulation.updateCanvasSize(newSize);
+    // Update canvas size to match the full world size (world goes from -newSize to +newSize)
+    this.simulation.updateCanvasSize(newSize * 2);
     
-    // Reset simulation to apply new boundaries
-    this.resetSimulation();
+    // Clear only small particles, keep large particle and its history
+    const currentParticleCount = this.turtles.length - 1; // exclude large particle
+    
+    // Remove all turtles except the large particle
+    this.turtles.ask((turtle: ElasticParticle) => {
+      if (!turtle.isLarge) {
+        turtle.die();
+      }
+    });
+    
+    // Reposition large particle if it's outside new boundaries
+    const maxPos = newSize - this.largeParticle.size;
+    const clampedX = Math.max(-maxPos, Math.min(maxPos, currentX));
+    const clampedY = Math.max(-maxPos, Math.min(maxPos, currentY));
+    
+    this.largeParticle.setxy(clampedX, clampedY);
+    this.largeParticle.vx = currentVx;
+    this.largeParticle.vy = currentVy;
+    
+    // Recreate small particles with same count
+    this.setupSmallParticles(currentParticleCount);
+    
+    // DO NOT reset analysis - keep MSD history and continue from current position
+    // Only update the viewWidth/viewHeight for particle placement
+    this.viewWidth = newSize * 2;
+    this.viewHeight = newSize * 2;
+    
+    console.log(`World size updated. Large particle at (${clampedX}, ${clampedY}) with velocity (${currentVx}, ${currentVy})`);
   }
 
   public getStatistics() {
