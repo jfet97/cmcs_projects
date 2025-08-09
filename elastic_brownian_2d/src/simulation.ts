@@ -55,8 +55,10 @@ export class Simulation {
     // Transform coordinates: world coordinates to canvas coordinates
     this.ctx.save();
     this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-    const scale = Math.min(this.canvas.width / worldWidth, this.canvas.height / worldHeight);
-    this.ctx.scale(scale, -scale); // Negative Y to flip coordinate system
+    // The scale should be based on the canvas dimension vs the world dimension.
+    // Since the canvas is now sized to the world, the scale is simply pixelsPerUnit.
+    // We use a negative scale for Y to flip the coordinate system (Y-up).
+    this.ctx.scale(this.pixelsPerUnit, -this.pixelsPerUnit);
 
     // Draw all particles
     this.turtles.ask((turtle: ElasticParticle) => {
@@ -190,21 +192,24 @@ export class Simulation {
     return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  // Resize canvas so that its pixel size matches world size (1:1 mapping by default)
+  // Resize canvas so that its pixel size matches world size
   public resizeCanvasForWorld(
     worldBounds: { minX: number; maxX: number; minY: number; maxY: number },
     pixelsPerUnit = 1
   ) {
-    this.pixelsPerUnit = pixelsPerUnit;
     const worldWidth = worldBounds.maxX - worldBounds.minX;
     const worldHeight = worldBounds.maxY - worldBounds.minY;
 
-    // Compute pixel size and apply to both the canvas buffer and CSS size for crisp rendering
-    const pxW = Math.max(50, Math.round(worldWidth * this.pixelsPerUnit));
-    const pxH = Math.max(50, Math.round(worldHeight * this.pixelsPerUnit));
-    this.canvas.width = pxW;
-    this.canvas.height = pxH;
-    this.canvas.style.width = `${pxW}px`;
-    this.canvas.style.height = `${pxH}px`;
+    // Calculate canvas size based on world dimensions and scale
+    const canvasWidth = worldWidth * pixelsPerUnit;
+    const canvasHeight = worldHeight * pixelsPerUnit;
+
+    // Set canvas dimensions
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
+
+    // Also update style to ensure layout consistency
+    this.canvas.style.width = `${canvasWidth}px`;
+    this.canvas.style.height = `${canvasHeight}px`;
   }
 }
