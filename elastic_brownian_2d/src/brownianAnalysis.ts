@@ -122,39 +122,30 @@ export class BrownianAnalysis {
       this.velocityHistory = this.velocityHistory.slice(-1000);
     }
 
-    // Logica automatica per reset del riferimento MSD se la MSD è statica ma la particella si muove
-    if (this.msdData.length > 50 && currentTick % 50 === 0) {
-      const recentMSD = this.msdData.slice(-20);
-      const msdVariation = Math.max(...recentMSD) - Math.min(...recentMSD);
+    // Only reset MSD if particle is truly stuck (very low velocity for extended period)
+    if (this.msdData.length > 100 && currentTick % 100 === 0) {
+      const recentVelocities = this.velocityHistory.slice(-50);
       const currentVelocity = Math.sqrt(this.largeParticle.vx ** 2 + this.largeParticle.vy ** 2);
-      // Se la MSD è piatta e la particella si muove, reset automatico
-      if (msdVariation < 0.1 && currentVelocity > 0.1) {
+
+      // Calculate average velocity over recent history
+      let avgVelocity = 0;
+      if (recentVelocities.length > 0) {
+        avgVelocity =
+          recentVelocities.reduce((sum, v) => {
+            return sum + Math.sqrt(v.vx * v.vx + v.vy * v.vy);
+          }, 0) / recentVelocities.length;
+      }
+
+      // Only reset if particle is truly stuck (very low average velocity)
+      if (avgVelocity < 0.01 && currentVelocity < 0.01) {
         this.resetReferencePosition();
         console.log(
-          `MSD auto-reset: particle moving (${currentVelocity.toFixed(2)}) but MSD static (Δ=${msdVariation.toFixed(3)})`
+          `MSD auto-reset: particle stuck (avg velocity: ${avgVelocity.toFixed(3)}, current: ${currentVelocity.toFixed(3)})`
         );
       }
     }
 
-    // Check if MSD has become static and needs a reset
-    if (currentTick > 200 && this.msdData.length > 50) {
-      const recentMSD = this.msdData.slice(-10);
-      const msdVariation = Math.max(...recentMSD) - Math.min(...recentMSD);
-
-      // If MSD variation is very small, it might be stuck
-      if (msdVariation < 0.1 && currentTick % 100 === 0) {
-        console.log(
-          `MSD appears static (variation: ${msdVariation.toFixed(3)}), checking particle movement...`
-        );
-
-        // Check if particle is actually moving
-        const currentVelocity = Math.sqrt(this.largeParticle.vx ** 2 + this.largeParticle.vy ** 2);
-        if (currentVelocity > 0.1) {
-          console.log("Particle is moving but MSD is static - resetting reference position");
-          this.resetReferencePosition();
-        }
-      }
-    }
+    // Removed duplicate MSD reset logic - now handled above with better conditions
 
     // Update charts periodically
     if (currentTick % CONFIG.ANALYSIS.chartUpdateInterval === 0) {

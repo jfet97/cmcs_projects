@@ -14,17 +14,8 @@ export class ElasticModel extends Model {
   analysis!: BrownianAnalysis;
   simulation!: Simulation;
 
-  viewWidth: number;
-  viewHeight: number;
-
-  constructor(
-    worldBounds: { minX: number; maxX: number; minY: number; maxY: number },
-    viewWidth: number,
-    viewHeight: number
-  ) {
+  constructor(worldBounds: { minX: number; maxX: number; minY: number; maxY: number }) {
     super(worldBounds);
-    this.viewWidth = viewWidth;
-    this.viewHeight = viewHeight;
   }
 
   override startup() {
@@ -69,11 +60,13 @@ export class ElasticModel extends Model {
   private setupSmallParticles(particleCount?: number) {
     const count = particleCount || CONFIG.SMALL_PARTICLES.count;
     this.turtles.create(count, (turtle: ElasticParticle) => {
-      // Random position avoiding the large particle
+      // Random position avoiding the large particle - use world boundaries consistently
+      const worldWidth = this.world.maxX - this.world.minX;
+      const worldHeight = this.world.maxY - this.world.minY;
       let x, y, distance;
       do {
-        x = (Math.random() - 0.5) * this.viewWidth * 0.8;
-        y = (Math.random() - 0.5) * this.viewHeight * 0.8;
+        x = (Math.random() - 0.5) * worldWidth * 0.8;
+        y = (Math.random() - 0.5) * worldHeight * 0.8;
         distance = Math.sqrt(x * x + y * y);
       } while (distance < CONFIG.LARGE_PARTICLE.radius * 3); // Keep initial distance from large particle
 
@@ -99,8 +92,7 @@ export class ElasticModel extends Model {
   }
 
   private initializeVisualization() {
-    const worldRadius = Math.max(Math.abs(this.world.maxX), Math.abs(this.world.maxY));
-    this.simulation = new Simulation(this.turtles, this.largeParticle, worldRadius);
+    this.simulation = new Simulation(this.turtles, this.largeParticle);
   }
 
   override step() {
@@ -151,7 +143,7 @@ export class ElasticModel extends Model {
       }
     }
 
-    this.simulation.drawParticles();
+    this.simulation.drawParticles(this.world);
   }
 
   // Public methods for external control
@@ -214,12 +206,8 @@ export class ElasticModel extends Model {
     this.world.minY = -newSize;
     this.world.maxY = newSize;
 
-    // Update view dimensions
-    this.viewWidth = newSize * 2;
-    this.viewHeight = newSize * 2;
-
-    // Update canvas size to match the full world size
-    this.simulation.updateCanvasSize(newSize * 2);
+    // Update canvas visual size based on new world bounds
+    this.simulation.updateCanvasVisualSize(this.world);
 
     // COMPLETE RESET: clear everything and start fresh
     this.turtles.clear();

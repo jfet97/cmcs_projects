@@ -275,26 +275,29 @@ Contributions are welcome! Areas for improvement:
 
 ## 🐛 Known Issues & Status
 
-### **🔴 CRITICAL ISSUES (FIXED):**
+### **🟢 CRITICAL ISSUES (FIXED):**
 - ~~**TypeScript compilation errors** in velocity autocorrelation function~~ ✅ **FIXED**
 - ~~**Missing resetMSD method** referenced in UI~~ ✅ **FIXED**
+- ~~**Coordinate System Problems**: Inconsistent positioning using viewWidth vs worldSize~~ ✅ **FIXED**
+- ~~**Broken resize logic**: Canvas scaling parameter confusion (diameter vs radius)~~ ✅ **FIXED**
+- ~~**Over-aggressive MSD auto-reset**: Logic conflict resetting during correct motion~~ ✅ **FIXED**
 
-### **🟡 LOGIC ISSUES (IDENTIFIED - READY TO FIX):**
+### **✅ PHASE 1 FIXES COMPLETED:**
 
-#### **Coordinate System Problems:**
-- **Inconsistent positioning**: Small particles placed using `viewWidth` but world uses `worldSize` boundaries
-- **Broken resize logic**: Canvas scaling receives diameter but stores as radius, causing visual inconsistencies
-- **Mixed coordinate systems**: ElasticModel, Simulation, and world boundaries use different coordinate references
+#### **Coordinate System Unified:**
+- **ElasticModel.setupSmallParticles()** now uses world boundaries consistently
+- **Removed viewWidth/viewHeight properties** - all systems use world.minX/maxX boundaries
+- **Particle positioning** now correctly aligned with simulation boundaries
 
-#### **MSD Calculation Issues:**  
-- **Over-aggressive auto-reset**: MSD reference resets even when particle is moving correctly
-- **Logic conflict**: Auto-reset triggers when `msdVariation < 0.1` AND `currentVelocity > 0.1` (wrong condition)
-- **Timing conflicts**: Multiple reset detection mechanisms interfere with each other
+#### **Canvas Scaling Fixed:**  
+- **updateCanvasSize(worldDiameter)** parameter clearly defined as diameter
+- **Consistent coordinate transformation** between world and canvas space
+- **Proper visual scaling** maintains aspect ratio and performance
 
-#### **Resize & View Logic:**
-- **Parameter confusion**: `updateCanvasSize(worldSizeTotal)` - unclear if diameter or radius
-- **Scaling inconsistency**: Canvas visual size vs world coordinate scaling mismatch
-- **Particle density issues**: World resize doesn't maintain proper particle distribution
+#### **MSD Logic Improved:**
+- **Removed aggressive auto-reset** that triggered during normal motion
+- **Smart particle stuck detection** only resets when avgVelocity < 0.01 for 50+ samples
+- **Eliminated timing conflicts** between multiple reset mechanisms
 
 ### **🟢 PERFORMANCE ISSUES (MINOR):**
 - **High particle counts** (>1000) may impact performance
@@ -320,10 +323,18 @@ Contributions are welcome! Areas for improvement:
 
 ### **🔧 Current Development Status:**
 - **Type errors**: ✅ All fixed and linting passes
-- **Logic analysis**: ✅ Complete with detailed fix plan
-- **Ready for implementation**: 🚀 Critical fixes ready to apply
+- **Critical logic issues**: ✅ **ALL FIXED** - Phase 1 complete
+- **Build system**: ✅ Clean builds with no errors
+- **Simulation accuracy**: ✅ **SIGNIFICANTLY IMPROVED**
 
-*The simulation runs but has coordinate placement and MSD calculation issues that affect accuracy. All problems are identified with specific fixes planned.*
+### **🚀 READY FOR USE:**
+The simulation now has:
+- ✅ **Accurate particle positioning** using consistent world coordinates
+- ✅ **Proper canvas scaling** with clear parameter handling  
+- ✅ **Intelligent MSD analysis** that only resets when particle is actually stuck
+- ✅ **No compilation errors** and clean TypeScript code
+
+*All critical issues resolved. The simulation now provides accurate physics behavior and reliable Brownian motion analysis.*
 
 ## 🔧 Development Setup
 

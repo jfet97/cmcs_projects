@@ -15,13 +15,13 @@ class ElasticBrownianApp {
 
   private initializeModel() {
     const worldSize = CONFIG.PHYSICS.worldSize;
-    const viewSize = worldSize * 2;
 
-    this.model = new ElasticModel(
-      { minX: -worldSize, maxX: worldSize, minY: -worldSize, maxY: worldSize },
-      viewSize,
-      viewSize
-    );
+    this.model = new ElasticModel({
+      minX: -worldSize,
+      maxX: worldSize,
+      minY: -worldSize,
+      maxY: worldSize
+    });
 
     this.model.startup();
   }
@@ -187,7 +187,7 @@ class ElasticBrownianApp {
     // Force a redraw of the simulation after window resize
     // This ensures the canvas scaling is properly updated
     if (this.model && this.model.simulation) {
-      this.model.simulation.drawParticles();
+      this.model.simulation.drawParticles((this.model as any).world);
     }
 
     // Also update charts if they exist

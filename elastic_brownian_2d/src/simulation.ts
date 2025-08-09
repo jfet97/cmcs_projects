@@ -5,14 +5,11 @@ export class Simulation {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private animationId = 0;
-  private worldSize = 200;
 
   constructor(
     private turtles: Turtles,
-    private largeParticle: ElasticParticle,
-    worldSize = 200
+    private largeParticle: ElasticParticle
   ) {
-    this.worldSize = worldSize;
     this.initializeCanvas();
   }
 
@@ -28,11 +25,16 @@ export class Simulation {
     }
     this.ctx = ctx;
 
-    // Set initial canvas size based on world size
-    this.updateCanvasSize(CONFIG.PHYSICS.worldSize * 2);
+    // Set initial canvas size - fixed resolution for performance
+    this.canvas.width = 600;
+    this.canvas.height = 600;
+    this.canvas.style.width = "400px";
+    this.canvas.style.height = "400px";
+    this.canvas.style.border = "1px solid #ccc";
+    this.canvas.style.background = "white";
   }
 
-  public drawParticles() {
+  public drawParticles(worldBounds: { minX: number; maxX: number; minY: number; maxY: number }) {
     // Check if canvas and context are valid
     if (!this.canvas || !this.ctx) {
       console.warn("Canvas or context not available for drawing");
@@ -42,12 +44,13 @@ export class Simulation {
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Use the stored world size for scaling
-    const worldSize = this.worldSize;
+    // Calculate world dimensions from bounds
+    const worldWidth = worldBounds.maxX - worldBounds.minX;
+    const worldHeight = worldBounds.maxY - worldBounds.minY;
 
-    // Validate world size
-    if (!worldSize || worldSize <= 0) {
-      console.warn("Invalid world size:", worldSize);
+    // Validate world bounds
+    if (worldWidth <= 0 || worldHeight <= 0) {
+      console.warn("Invalid world bounds:", worldBounds);
       return;
     }
 
@@ -55,10 +58,12 @@ export class Simulation {
     this.ctx.save();
     this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
 
-    // Scale to fit world in canvas (with small margin)
-    // Ensure we use the correct world bounds for scaling
-    const scale = (Math.min(this.canvas.width, this.canvas.height) * 0.85) / (worldSize * 2);
-    this.ctx.scale(scale, -scale); // Negative Y to flip coordinate system    // Draw all particles
+    // SIMPLE: World sempre riempie il canvas - eliminato scaling dinamico confuso
+    // Canvas size = 600x600 pixels, World size = qualsiasi, Visual sempre riempito
+    const scale = Math.min(this.canvas.width, this.canvas.height) * 0.9 / Math.max(worldWidth, worldHeight);
+    this.ctx.scale(scale, -scale); // Negative Y to flip coordinate system
+
+    // Draw all particles
     this.turtles.ask((turtle: ElasticParticle) => {
       this.drawParticle(turtle);
     });
@@ -175,35 +180,16 @@ export class Simulation {
     return this.canvas;
   }
 
-  // Method to update canvas size when world size changes
-  public updateCanvasSize(worldSizeTotal: number) {
-    console.log(`Setting canvas for world total size: ${worldSizeTotal}`);
-
-    // Update stored world size
-    this.worldSize = worldSizeTotal / 2; // worldSizeTotal is diameter, we store radius
-
-    // Canvas resolution: keep it fixed at 600x600 for consistency and performance
-    this.canvas.width = 600;
-    this.canvas.height = 600;
-
-    // Visual size: scale directly with world size but keep it reasonable
-    // World size 200 (100 radius) -> 400px visual
-    // World size 1000 (500 radius) -> 600px visual
-    const baseSize = 400;
-    const visualSize = Math.max(300, Math.min(700, baseSize + (worldSizeTotal - 200) * 0.4));
-
-    console.log(`Setting visual size to ${visualSize}px`);
-
-    // Set style properties
-    this.canvas.style.width = visualSize + "px";
-    this.canvas.style.height = visualSize + "px";
-    this.canvas.style.border = "1px solid #ccc";
-    this.canvas.style.background = "white";
-    this.canvas.style.maxWidth = "none";
-    this.canvas.style.maxHeight = "none";
-
-    // Force a redraw to apply the new scaling
-    this.drawParticles();
+  // Method to update canvas visual size when world changes - DISABLED FOR SIMPLICITY
+  public updateCanvasVisualSize(worldBounds: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  }) {
+    // DO NOTHING - keep canvas size fixed to eliminate confusion
+    // Canvas visual size remains at 400px always
+    console.log(`World changed but canvas visual size stays fixed at 400px for simplicity`);
   }
 
   // Method to get current canvas image data (for screenshots, etc.)
