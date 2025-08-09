@@ -3,9 +3,9 @@ import { CONFIG } from "./particleTypes";
 
 class ElasticBrownianApp {
   private model!: ElasticModel;
-  private animationId: number = 0;
-  private isPaused: boolean = false;
-  private lastStatsUpdate: number = 0;
+  private animationId = 0;
+  private isPaused = false;
+  private lastStatsUpdate = 0;
 
   constructor() {
     this.initializeModel();
@@ -16,13 +16,13 @@ class ElasticBrownianApp {
   private initializeModel() {
     const worldSize = CONFIG.PHYSICS.worldSize;
     const viewSize = worldSize * 2;
-    
+
     this.model = new ElasticModel(
       { minX: -worldSize, maxX: worldSize, minY: -worldSize, maxY: worldSize },
       viewSize,
       viewSize
     );
-    
+
     this.model.startup();
   }
 
@@ -38,8 +38,8 @@ class ElasticBrownianApp {
     // Particle count slider
     const particleCountSlider = document.getElementById("particle-count") as HTMLInputElement;
     const particleCountValue = document.getElementById("particle-count-value");
-    
-    particleCountSlider?.addEventListener("input", (e) => {
+
+    particleCountSlider?.addEventListener("input", e => {
       const count = parseInt((e.target as HTMLInputElement).value);
       if (particleCountValue) {
         particleCountValue.textContent = count.toString();
@@ -51,8 +51,8 @@ class ElasticBrownianApp {
     // Particle speed slider
     const particleSpeedSlider = document.getElementById("particle-speed") as HTMLInputElement;
     const particleSpeedValue = document.getElementById("particle-speed-value");
-    
-    particleSpeedSlider?.addEventListener("input", (e) => {
+
+    particleSpeedSlider?.addEventListener("input", e => {
       const speed = parseFloat((e.target as HTMLInputElement).value);
       if (particleSpeedValue) {
         particleSpeedValue.textContent = speed.toFixed(1);
@@ -63,8 +63,8 @@ class ElasticBrownianApp {
     // World size slider
     const worldSizeSlider = document.getElementById("world-size") as HTMLInputElement;
     const worldSizeValue = document.getElementById("world-size-value");
-    
-    worldSizeSlider?.addEventListener("input", (e) => {
+
+    worldSizeSlider?.addEventListener("input", e => {
       const size = parseInt((e.target as HTMLInputElement).value);
       if (worldSizeValue) {
         worldSizeValue.textContent = size.toString();
@@ -82,21 +82,21 @@ class ElasticBrownianApp {
         this.model.step();
         this.updateStatistics();
       }
-      
+
       this.animationId = requestAnimationFrame(animate);
     };
-    
+
     animate();
   }
 
   private updateStatistics() {
     const now = Date.now();
-    
+
     // Update statistics every 100ms for smooth UI
     if (now - this.lastStatsUpdate < 100) {
       return;
     }
-    
+
     this.lastStatsUpdate = now;
     const stats = this.model.getStatistics();
     const analysis = this.model.analysis.getAnalysisSummary();
@@ -107,13 +107,13 @@ class ElasticBrownianApp {
     this.updateElement("collision-count", stats.collisions.toString());
     this.updateElement("velocity-value", stats.velocity.toFixed(2));
     this.updateElement("displacement-value", stats.displacement.toFixed(2));
-    
+
     // Update particle count display
     const particleCountValue = document.getElementById("particle-count-value");
     if (particleCountValue) {
       particleCountValue.textContent = stats.smallParticleCount.toString();
     }
-    
+
     // Update Brownian motion indicator
     this.updateBrownianIndicator(analysis);
   }
@@ -125,7 +125,9 @@ class ElasticBrownianApp {
     }
   }
 
-  private updateBrownianIndicator(analysis: ReturnType<typeof this.model.analysis.getAnalysisSummary>) {
+  private updateBrownianIndicator(
+    analysis: ReturnType<typeof this.model.analysis.getAnalysisSummary>
+  ) {
     const indicator = document.getElementById("brownian-indicator");
     if (!indicator) return;
 
@@ -150,14 +152,14 @@ class ElasticBrownianApp {
 
   private resetSimulation() {
     this.model.resetSimulation();
-    
+
     // Reset UI elements
     this.updateElement("ticks-value", "0");
     this.updateElement("msd-value", "0.00");
     this.updateElement("collision-count", "0");
     this.updateElement("velocity-value", "0.00");
     this.updateElement("displacement-value", "0.00");
-    
+
     const indicator = document.getElementById("brownian-indicator");
     if (indicator) {
       indicator.textContent = "Initializing...";
@@ -174,8 +176,24 @@ class ElasticBrownianApp {
   }
 
   private handleResize() {
-    // Handle responsive behavior if needed
-    // Canvas size is fixed, but we could adjust chart sizes here
+    // Force a redraw of the simulation after window resize
+    // This ensures the canvas scaling is properly updated
+    if (this.model && this.model.simulation) {
+      this.model.simulation.drawParticles();
+    }
+
+    // Also update charts if they exist
+    if (this.model && this.model.analysis) {
+      const msdChart = (this.model.analysis as any).msdChart;
+      const velocityChart = (this.model.analysis as any).velocityChart;
+
+      if (msdChart) {
+        msdChart.resize();
+      }
+      if (velocityChart) {
+        velocityChart.resize();
+      }
+    }
   }
 
   // Public methods for debugging/testing

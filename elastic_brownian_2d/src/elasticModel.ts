@@ -139,6 +139,18 @@ export class ElasticModel extends Model {
 
     // Update analysis and visualization
     this.analysis.update(this.ticks);
+
+    // Check if MSD is becoming static and potentially reset reference
+    if (this.ticks > 500 && this.ticks % 200 === 0) {
+      const currentMSD = this.analysis.getCurrentMSD();
+      const msdSlope = this.analysis.getMSDSlope();
+
+      // If MSD is very small and slope is near zero, the particle might be stuck
+      if (currentMSD < 0.1 && Math.abs(msdSlope) < 0.001) {
+        console.log("Detected potential MSD calculation issue - very low displacement");
+      }
+    }
+
     this.simulation.drawParticles();
   }
 
@@ -153,14 +165,19 @@ export class ElasticModel extends Model {
     // Create small particles with new count if provided
     this.setupSmallParticles(newParticleCount);
 
-    // Reset state
+    // Reset state with actual particle position
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
     this.largeParticleState.positionHistory = [];
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.totalEnergyReceived = 0;
+    this.largeParticleState.lastCollisionTick = -1;
 
     this.analysis.reset();
+
+    console.log(
+      `Simulation reset. Large particle at (${this.largeParticle.x}, ${this.largeParticle.y})`
+    );
   }
 
   public updateParticleSpeed(newSpeed: number) {
@@ -215,16 +232,22 @@ export class ElasticModel extends Model {
     this.updateParticleSpeed(currentSpeed);
 
     // Reset all state and analysis (fresh start)
+    // Make sure we use the actual particle position after setup
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
     this.largeParticleState.positionHistory = [];
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.totalEnergyReceived = 0;
+    this.largeParticleState.lastCollisionTick = -1;
 
+    // Reset analysis with new reference position
     this.analysis.reset();
 
     console.log(
       `World size updated to ${newSize}. Fresh simulation with ${currentParticleCount} particles at speed ${currentSpeed}`
+    );
+    console.log(
+      `Large particle reset to position: (${this.largeParticle.x}, ${this.largeParticle.y})`
     );
   }
 

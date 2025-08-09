@@ -9,8 +9,8 @@ export class BrownianAnalysis {
   private msdData: number[] = [];
   private timeData: number[] = [];
   private velocityAutocorrelationData: number[] = [];
-  private velocityHistory: Array<{vx: number; vy: number; t: number}> = [];
-  
+  private velocityHistory: Array<{ vx: number; vy: number; t: number }> = [];
+
   constructor(
     private largeParticle: ElasticParticle,
     private largeParticleState: LargeParticleState
@@ -45,13 +45,13 @@ export class BrownianAnalysis {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { 
+          x: {
             title: { display: true, text: "Time Steps" },
             type: "linear"
           },
-          y: { 
-            title: { display: true, text: "MSD" }, 
-            beginAtZero: true 
+          y: {
+            title: { display: true, text: "MSD" },
+            beginAtZero: true
           }
         },
         plugins: {
@@ -91,11 +91,11 @@ export class BrownianAnalysis {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: { 
+          x: {
             title: { display: true, text: "Time Lag" },
             type: "linear"
           },
-          y: { 
+          y: {
             title: { display: true, text: "Autocorrelation" }
           }
         },
@@ -125,7 +125,7 @@ export class BrownianAnalysis {
     // Update charts periodically
     if (currentTick % CONFIG.ANALYSIS.chartUpdateInterval === 0) {
       this.updateMSD(currentTick);
-      
+
       if (this.velocityChart && currentTick % (CONFIG.ANALYSIS.chartUpdateInterval * 5) === 0) {
         this.updateVelocityAutocorrelation();
       }
@@ -168,7 +168,7 @@ export class BrownianAnalysis {
       for (let i = 0; i < this.velocityHistory.length - lag; i++) {
         const v1 = this.velocityHistory[i];
         const v2 = this.velocityHistory[i + lag];
-        
+
         // Dot product of velocity vectors
         sum += v1.vx * v2.vx + v1.vy * v2.vy;
         count++;
@@ -183,7 +183,7 @@ export class BrownianAnalysis {
     // Normalize by the autocorrelation at lag 0
     if (autocorrelations.length > 0 && autocorrelations[0] > 0) {
       const normalizedAutocorrelations = autocorrelations.map(ac => ac / autocorrelations[0]);
-      
+
       this.velocityChart.data.labels = lags;
       this.velocityChart.data.datasets[0].data = normalizedAutocorrelations;
       this.velocityChart.update("none");
@@ -191,9 +191,21 @@ export class BrownianAnalysis {
   }
 
   public getCurrentMSD(): number {
+    // Use reference position from state to ensure consistency
     const dx = this.largeParticle.x - this.largeParticleState.x0;
     const dy = this.largeParticle.y - this.largeParticleState.y0;
-    return dx * dx + dy * dy;
+    const msd = dx * dx + dy * dy;
+
+    // Add some logging to debug MSD calculation issues
+    if (this.msdData.length % 100 === 0) {
+      console.log(
+        `MSD calc: particle at (${this.largeParticle.x.toFixed(2)}, ${this.largeParticle.y.toFixed(2)}), ` +
+          `ref at (${this.largeParticleState.x0.toFixed(2)}, ${this.largeParticleState.y0.toFixed(2)}), ` +
+          `displacement: (${dx.toFixed(2)}, ${dy.toFixed(2)}), MSD: ${msd.toFixed(2)}`
+      );
+    }
+
+    return msd;
   }
 
   public getMSDSlope(): number {
@@ -202,9 +214,12 @@ export class BrownianAnalysis {
     // Calculate slope using least squares regression on recent data
     const recentData = Math.min(500, this.msdData.length);
     const startIdx = this.msdData.length - recentData;
-    
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-    
+
+    let sumX = 0,
+      sumY = 0,
+      sumXY = 0,
+      sumX2 = 0;
+
     for (let i = 0; i < recentData; i++) {
       const x = this.timeData[startIdx + i];
       const y = this.msdData[startIdx + i];
@@ -221,12 +236,12 @@ export class BrownianAnalysis {
 
   public getAverageKineticEnergy(): number {
     if (this.velocityHistory.length === 0) return 0;
-    
+
     const recent = this.velocityHistory.slice(-50);
     const totalKE = recent.reduce((sum, v) => {
       return sum + 0.5 * this.largeParticle.mass * (v.vx * v.vx + v.vy * v.vy);
     }, 0);
-    
+
     return totalKE / recent.length;
   }
 
@@ -246,6 +261,16 @@ export class BrownianAnalysis {
       this.velocityChart.data.datasets[0].data = [];
       this.velocityChart.update();
     }
+
+    console.log("Brownian analysis reset - MSD data cleared");
+  }
+
+  public updateReferencePosition() {
+    // Update reference position to current particle position
+    // This can be called when the simulation is reset or when issues are detected
+    this.largeParticleState.x0 = this.largeParticle.x;
+    this.largeParticleState.y0 = this.largeParticle.y;
+    console.log(`Reference position updated to (${this.largeParticle.x}, ${this.largeParticle.y})`);
   }
 
   public getAnalysisSummary() {
