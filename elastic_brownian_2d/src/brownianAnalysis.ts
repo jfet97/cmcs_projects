@@ -327,6 +327,12 @@ export class BrownianAnalysis {
     this.resetReferencePosition();
   }
 
+  // Allow UI to trigger a resize of charts (e.g., when container size changes)
+  public resizeCharts() {
+    if (this.msdChart) this.msdChart.resize();
+    if (this.velocityChart) this.velocityChart.resize();
+  }
+
   public getAnalysisSummary() {
     return {
       currentMSD: this.getCurrentMSD(),

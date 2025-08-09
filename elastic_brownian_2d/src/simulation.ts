@@ -5,6 +5,8 @@ export class Simulation {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private animationId = 0;
+  // pixels per world unit – by default 1px = 1 world unit for a 1:1 mapping
+  private pixelsPerUnit = 1;
 
   constructor(
     private turtles: Turtles,
@@ -25,11 +27,7 @@ export class Simulation {
     }
     this.ctx = ctx;
 
-    // Set initial canvas size - fixed resolution for performance
-    this.canvas.width = 600;
-    this.canvas.height = 600;
-    this.canvas.style.width = "400px";
-    this.canvas.style.height = "400px";
+    // Visual styles only (size is set by resizeCanvasForWorld)
     this.canvas.style.border = "1px solid #ccc";
     this.canvas.style.background = "white";
   }
@@ -57,10 +55,7 @@ export class Simulation {
     // Transform coordinates: world coordinates to canvas coordinates
     this.ctx.save();
     this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-
-    // SIMPLE: World sempre riempie il canvas - eliminato scaling dinamico confuso
-    // Canvas size = 600x600 pixels, World size = qualsiasi, Visual sempre riempito
-    const scale = Math.min(this.canvas.width, this.canvas.height) * 0.9 / Math.max(worldWidth, worldHeight);
+    const scale = Math.min(this.canvas.width / worldWidth, this.canvas.height / worldHeight);
     this.ctx.scale(scale, -scale); // Negative Y to flip coordinate system
 
     // Draw all particles
@@ -187,13 +182,29 @@ export class Simulation {
     minY: number;
     maxY: number;
   }) {
-    // DO NOTHING - keep canvas size fixed to eliminate confusion
-    // Canvas visual size remains at 400px always
-    console.log(`World changed but canvas visual size stays fixed at 400px for simplicity`);
+    this.resizeCanvasForWorld(worldBounds, this.pixelsPerUnit);
   }
 
   // Method to get current canvas image data (for screenshots, etc.)
   public getImageData(): ImageData {
     return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  // Resize canvas so that its pixel size matches world size (1:1 mapping by default)
+  public resizeCanvasForWorld(
+    worldBounds: { minX: number; maxX: number; minY: number; maxY: number },
+    pixelsPerUnit = 1
+  ) {
+    this.pixelsPerUnit = pixelsPerUnit;
+    const worldWidth = worldBounds.maxX - worldBounds.minX;
+    const worldHeight = worldBounds.maxY - worldBounds.minY;
+
+    // Compute pixel size and apply to both the canvas buffer and CSS size for crisp rendering
+    const pxW = Math.max(50, Math.round(worldWidth * this.pixelsPerUnit));
+    const pxH = Math.max(50, Math.round(worldHeight * this.pixelsPerUnit));
+    this.canvas.width = pxW;
+    this.canvas.height = pxH;
+    this.canvas.style.width = `${pxW}px`;
+    this.canvas.style.height = `${pxH}px`;
   }
 }

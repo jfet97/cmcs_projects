@@ -214,20 +214,13 @@ class ElasticBrownianApp {
   }
 }
 
-// Initialize the application when DOM is loaded
-document.addEventListener("DOMContentLoaded", () => {
-  new ElasticBrownianApp();
-});
-
-// Export for debugging in console
+// Initialize the application when DOM is loaded and expose globally for debugging
 declare global {
   interface Window {
     elasticBrownianApp: ElasticBrownianApp;
   }
 }
-
-// Make app available globally for debugging
-window.addEventListener("load", () => {
+document.addEventListener("DOMContentLoaded", () => {
   if (!window.elasticBrownianApp) {
     window.elasticBrownianApp = new ElasticBrownianApp();
   }

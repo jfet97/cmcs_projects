@@ -23,6 +23,8 @@ export class ElasticModel extends Model {
     this.setupSmallParticles();
     this.initializeAnalysis();
     this.initializeVisualization();
+    // Ensure canvas size maps 1:1 with current world at startup
+    this.simulation.resizeCanvasForWorld(this.world, 1);
   }
 
   private setupLargeParticle() {
@@ -167,6 +169,9 @@ export class ElasticModel extends Model {
 
     this.analysis.reset();
 
+    // Reset tick counter so everything restarts from zero
+    this.ticks = 0;
+
     console.log(
       `Simulation reset. Large particle at (${this.largeParticle.x}, ${this.largeParticle.y})`
     );
@@ -230,6 +235,9 @@ export class ElasticModel extends Model {
 
     // Reset analysis with new reference position
     this.analysis.reset();
+
+    // Also reset ticks to start fresh
+    this.ticks = 0;
 
     console.log(
       `World size updated to ${newSize}. Fresh simulation with ${currentParticleCount} particles at speed ${currentSpeed}`
