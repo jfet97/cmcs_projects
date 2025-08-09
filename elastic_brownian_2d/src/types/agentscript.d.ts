@@ -8,6 +8,7 @@ declare module 'agentscript' {
   export interface Turtles {
     create(count: number, callback?: (turtle: any) => void): void;
     ask(callback: (turtle: any, i: number) => void): void;
+    clear(): void;
     readonly length: number;
     some: (callback: (turtle: any, i: number) => boolean) => boolean;
   }

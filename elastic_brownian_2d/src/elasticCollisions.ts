@@ -220,7 +220,7 @@ export function handleAllCollisions(
   let collisionCount = 0;
   const grid = createSpatialGrid(turtles, CONFIG.LARGE_PARTICLE.radius * 3);
   
-  let largeParticle: ElasticParticle | null = null;
+  let largeParticle: ElasticParticle | undefined;
   
   // Find the large particle
   turtles.ask((turtle: ElasticParticle) => {
@@ -231,7 +231,7 @@ export function handleAllCollisions(
 
   if (!largeParticle) return 0;
 
-  // Check collisions only between small particles and the large particle
+  // TypeScript now knows largeParticle is defined
   const nearbyParticles = getNearbyParticles(
     largeParticle.x,
     largeParticle.y,

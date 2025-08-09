@@ -96,7 +96,8 @@ export class ElasticModel extends Model {
   }
 
   private initializeVisualization() {
-    this.simulation = new Simulation(this.turtles, this.largeParticle);
+    const worldRadius = Math.max(Math.abs(this.world.maxX), Math.abs(this.world.maxY));
+    this.simulation = new Simulation(this.turtles, this.largeParticle, worldRadius);
   }
 
   override step() {
@@ -179,13 +180,11 @@ export class ElasticModel extends Model {
   }
 
   public updateWorldSize(newSize: number) {
-    console.log(`Updating world size to ${newSize}`);
+    console.log(`Updating world size to ${newSize} - FULL RESET`);
     
-    // Save current large particle position and velocity
-    const currentX = this.largeParticle.x;
-    const currentY = this.largeParticle.y;
-    const currentVx = this.largeParticle.vx;
-    const currentVy = this.largeParticle.vy;
+    // Save current user parameters (NOT particle states!)
+    const currentParticleCount = this.turtles.length - 1; // exclude large particle
+    const currentSpeed = this.getSmallParticleSpeed(); // Get current speed setting
     
     // Update world boundaries
     this.world.minX = -newSize;
@@ -193,37 +192,45 @@ export class ElasticModel extends Model {
     this.world.minY = -newSize;
     this.world.maxY = newSize;
     
-    // Update canvas size to match the full world size (world goes from -newSize to +newSize)
-    this.simulation.updateCanvasSize(newSize * 2);
-    
-    // Clear only small particles, keep large particle and its history
-    const currentParticleCount = this.turtles.length - 1; // exclude large particle
-    
-    // Remove all turtles except the large particle
-    this.turtles.ask((turtle: ElasticParticle) => {
-      if (!turtle.isLarge) {
-        turtle.die();
-      }
-    });
-    
-    // Reposition large particle if it's outside new boundaries
-    const maxPos = newSize - this.largeParticle.size;
-    const clampedX = Math.max(-maxPos, Math.min(maxPos, currentX));
-    const clampedY = Math.max(-maxPos, Math.min(maxPos, currentY));
-    
-    this.largeParticle.setxy(clampedX, clampedY);
-    this.largeParticle.vx = currentVx;
-    this.largeParticle.vy = currentVy;
-    
-    // Recreate small particles with same count
-    this.setupSmallParticles(currentParticleCount);
-    
-    // DO NOT reset analysis - keep MSD history and continue from current position
-    // Only update the viewWidth/viewHeight for particle placement
+    // Update view dimensions
     this.viewWidth = newSize * 2;
     this.viewHeight = newSize * 2;
     
-    console.log(`World size updated. Large particle at (${clampedX}, ${clampedY}) with velocity (${currentVx}, ${currentVy})`);
+    // Update canvas size to match the full world size
+    this.simulation.updateCanvasSize(newSize * 2);
+    
+    // COMPLETE RESET: clear everything and start fresh
+    this.turtles.clear();
+    
+    // Recreate large particle at center (fresh start)
+    this.setupLargeParticle();
+    
+    // Recreate small particles with saved count and speed
+    this.setupSmallParticles(currentParticleCount);
+    this.updateParticleSpeed(currentSpeed);
+    
+    // Reset all state and analysis (fresh start)
+    this.largeParticleState.x0 = this.largeParticle.x;
+    this.largeParticleState.y0 = this.largeParticle.y;
+    this.largeParticleState.positionHistory = [];
+    this.largeParticleState.collisionCount = 0;
+    this.largeParticleState.totalEnergyReceived = 0;
+    
+    this.analysis.reset();
+    
+    console.log(`World size updated to ${newSize}. Fresh simulation with ${currentParticleCount} particles at speed ${currentSpeed}`);
+  }
+  
+  private getSmallParticleSpeed(): number {
+    // Get current speed from existing small particles, or default
+    let speed: number = CONFIG.SMALL_PARTICLES.speed;
+    this.turtles.ask((turtle: ElasticParticle) => {
+      if (!turtle.isLarge) {
+        speed = turtle.speed;
+        return; // Exit early after finding first small particle
+      }
+    });
+    return speed;
   }
 
   public getStatistics() {

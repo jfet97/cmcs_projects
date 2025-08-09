@@ -5,11 +5,14 @@ export class Simulation {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private animationId: number = 0;
+  private worldSize: number = 200;
 
   constructor(
     private turtles: Turtles,
-    private largeParticle: ElasticParticle
+    private largeParticle: ElasticParticle,
+    worldSize: number = 200
   ) {
+    this.worldSize = worldSize;
     this.initializeCanvas();
   }
 
@@ -25,34 +28,24 @@ export class Simulation {
     }
     this.ctx = ctx;
 
-    // Set initial canvas size (matching default world size: world goes from -worldSize to +worldSize)
-    const worldSize = CONFIG.PHYSICS.worldSize * 2; // Canvas must be 2x world size to show full world
-    
-    // Keep canvas resolution reasonable to avoid performance/memory issues
-    const canvasResolution = Math.min(800, worldSize);
-    this.canvas.width = canvasResolution;
-    this.canvas.height = canvasResolution;
-    
-    // Set visual size (constrained for UI)
-    const visualSize = Math.max(200, Math.min(600, worldSize * 0.8));
-    
-    // Set canvas style for clean appearance
-    this.canvas.style.border = "1px solid #ccc";
-    this.canvas.style.background = "white";
-    this.canvas.style.width = visualSize + 'px';
-    this.canvas.style.height = visualSize + 'px';
-    this.canvas.style.maxWidth = 'none';
-    this.canvas.style.maxHeight = 'none';
+    // Set initial canvas size based on world size
+    this.updateCanvasSize(CONFIG.PHYSICS.worldSize * 2);
   }
 
   public drawParticles() {
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
+    // Use the stored world size for scaling
+    const worldSize = this.worldSize;
+    
     // Transform coordinates: world coordinates to canvas coordinates
     this.ctx.save();
     this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-    this.ctx.scale(1, -1); // Flip Y axis to match mathematical coordinates
+    
+    // Scale to fit world in canvas (with small margin)
+    const scale = (this.canvas.width * 0.9) / (worldSize * 2);
+    this.ctx.scale(scale, -scale); // Negative Y to flip coordinate system
 
     // Draw all particles
     this.turtles.ask((turtle: ElasticParticle) => {
@@ -172,33 +165,30 @@ export class Simulation {
   }
 
   // Method to update canvas size when world size changes
-  public updateCanvasSize(newSize: number) {
-    console.log(`Updating canvas size to ${newSize}`);
+  public updateCanvasSize(worldSizeTotal: number) {
+    console.log(`Setting canvas for world total size: ${worldSizeTotal}`);
     
-    // Keep canvas resolution reasonable to avoid performance/memory issues
-    const canvasResolution = Math.min(800, newSize);
-    this.canvas.width = canvasResolution;
-    this.canvas.height = canvasResolution;
+    // Update stored world size
+    this.worldSize = worldSizeTotal / 2; // worldSizeTotal is diameter, we store radius
     
-    // Visual size should scale more directly with world size
-    // Scale based on newSize but keep it reasonable (150-600px)
-    const baseVisualSize = newSize * 1.5; // More direct scaling
-    const visualSize = Math.max(150, Math.min(600, baseVisualSize));
+    // Canvas resolution: keep it fixed at 600x600 for consistency and performance
+    this.canvas.width = 600;
+    this.canvas.height = 600;
     
-    console.log(`Setting visual size to ${visualSize}px (from world size ${newSize})`);
+    // Visual size: scale directly with world size but keep it reasonable
+    // World size 200 (100 radius) -> 300px visual
+    // World size 1000 (500 radius) -> 600px visual
+    const visualSize = Math.max(250, Math.min(600, worldSizeTotal * 0.6));
     
-    // Force the visual update by directly setting CSS properties
+    console.log(`Setting visual size to ${visualSize}px`);
+    
+    // Set style properties
     this.canvas.style.width = visualSize + 'px';
     this.canvas.style.height = visualSize + 'px';
+    this.canvas.style.border = "1px solid #ccc";
+    this.canvas.style.background = "white";
     this.canvas.style.maxWidth = 'none';
     this.canvas.style.maxHeight = 'none';
-    
-    // Force a repaint by slightly changing the canvas and reverting
-    const tempWidth = this.canvas.style.width;
-    this.canvas.style.width = (visualSize + 1) + 'px';
-    setTimeout(() => {
-      this.canvas.style.width = tempWidth;
-    }, 10);
   }
 
   // Method to get current canvas image data (for screenshots, etc.)

@@ -7,6 +7,7 @@ export interface ElasticParticle extends Turtle {
   isLarge: boolean;     // particle type identifier
   stepSize: number;     // for random walk
   speed: number;        // current speed magnitude
+  lastCollisionTick: number;  // track last collision to prevent rapid repeated collisions
 }
 
 export interface LargeParticleState {
