@@ -23,7 +23,6 @@ export const CONFIG = {
     mass: 50,
     radius: 8,
     initialPosition: {x: 0, y: 0},
-    friction: 0.99,  // mild velocity decay
     color: "red"
   },
   SMALL_PARTICLES: {
@@ -35,7 +34,7 @@ export const CONFIG = {
     color: "lightblue"
   },
   PHYSICS: {
-    worldSize: 400, // simulation boundaries
+    worldSize: 200, // simulation boundaries (reduced for better density)
     timeStep: 1,    // simulation time unit
     collisionBuffer: 0.5,  // collision detection margin
     minCollisionInterval: 3  // minimum ticks between collisions for same pair

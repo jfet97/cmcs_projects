@@ -115,29 +115,39 @@ export function moveSmallParticleWithRandomWalk(
 ) {
   if (particle.isLarge) return;
 
-  // Random walk movement between collisions
-  const angle = Math.random() * 2 * Math.PI;
-  const dx = particle.stepSize * Math.cos(angle);
-  const dy = particle.stepSize * Math.sin(angle);
+  // Add small random thermal motion to maintain energy (much smaller)
+  const thermalAngle = Math.random() * 2 * Math.PI;
+  const thermalMagnitude = particle.speed * 0.02; // very small thermal kick
+  particle.vx += thermalMagnitude * Math.cos(thermalAngle);
+  particle.vy += thermalMagnitude * Math.sin(thermalAngle);
+  
+  // Limit maximum speed to target speed
+  const currentSpeed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+  if (currentSpeed > particle.speed * 1.2) {
+    const scale = (particle.speed * 1.2) / currentSpeed;
+    particle.vx *= scale;
+    particle.vy *= scale;
+  }
 
-  let newX = particle.x + dx;
-  let newY = particle.y + dy;
+  // Move based on velocity
+  let newX = particle.x + particle.vx;
+  let newY = particle.y + particle.vy;
 
   // Handle boundary conditions with elastic reflection
   if (newX > world.maxX) {
     newX = world.maxX - (newX - world.maxX);
-    particle.vx = Math.abs(particle.vx); // reverse x velocity
+    particle.vx = -Math.abs(particle.vx); // reverse x velocity
   } else if (newX < world.minX) {
     newX = world.minX + (world.minX - newX);
-    particle.vx = -Math.abs(particle.vx);
+    particle.vx = Math.abs(particle.vx);
   }
 
   if (newY > world.maxY) {
     newY = world.maxY - (newY - world.maxY);
-    particle.vy = Math.abs(particle.vy); // reverse y velocity
+    particle.vy = -Math.abs(particle.vy); // reverse y velocity
   } else if (newY < world.minY) {
     newY = world.minY + (world.minY - newY);
-    particle.vy = -Math.abs(particle.vy);
+    particle.vy = Math.abs(particle.vy);
   }
 
   particle.setxy(newX, newY);
@@ -152,20 +162,41 @@ export function moveLargeParticle(
   // Move based on current velocity (from collisions)
   let newX = particle.x + particle.vx;
   let newY = particle.y + particle.vy;
+  
+  // Account for particle radius to prevent going through walls
+  const radius = particle.size;
 
-  // Apply friction for stability
-  particle.vx *= CONFIG.LARGE_PARTICLE.friction;
-  particle.vy *= CONFIG.LARGE_PARTICLE.friction;
+  // No friction - particles maintain momentum from collisions
 
-  // Handle boundary conditions with elastic reflection
-  if (newX > world.maxX || newX < world.minX) {
-    particle.vx = -particle.vx;
-    newX = Math.max(world.minX, Math.min(world.maxX, newX));
+  // Handle boundary conditions with elastic reflection - more robust approach
+  let hitBoundary = false;
+  
+  // X boundaries
+  if (newX + radius > world.maxX) {
+    newX = world.maxX - radius; // clamp to boundary
+    if (particle.vx > 0) particle.vx = -Math.abs(particle.vx); // ensure velocity points inward
+    hitBoundary = true;
+  } else if (newX - radius < world.minX) {
+    newX = world.minX + radius; // clamp to boundary
+    if (particle.vx < 0) particle.vx = Math.abs(particle.vx); // ensure velocity points inward
+    hitBoundary = true;
   }
 
-  if (newY > world.maxY || newY < world.minY) {
-    particle.vy = -particle.vy;
-    newY = Math.max(world.minY, Math.min(world.maxY, newY));
+  // Y boundaries
+  if (newY + radius > world.maxY) {
+    newY = world.maxY - radius; // clamp to boundary
+    if (particle.vy > 0) particle.vy = -Math.abs(particle.vy); // ensure velocity points inward
+    hitBoundary = true;
+  } else if (newY - radius < world.minY) {
+    newY = world.minY + radius; // clamp to boundary
+    if (particle.vy < 0) particle.vy = Math.abs(particle.vy); // ensure velocity points inward
+    hitBoundary = true;
+  }
+  
+  // Apply slight velocity damping when hitting boundaries to prevent infinite bouncing
+  if (hitBoundary) {
+    particle.vx *= 0.95;
+    particle.vy *= 0.95;
   }
 
   particle.setxy(newX, newY);

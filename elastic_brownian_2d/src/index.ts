@@ -40,12 +40,36 @@ class ElasticBrownianApp {
     const particleCountValue = document.getElementById("particle-count-value");
     
     particleCountSlider?.addEventListener("input", (e) => {
-      const count = (e.target as HTMLInputElement).value;
+      const count = parseInt((e.target as HTMLInputElement).value);
       if (particleCountValue) {
-        particleCountValue.textContent = count;
+        particleCountValue.textContent = count.toString();
       }
-      // Note: Changing particle count requires simulation restart
-      // This could be implemented as a future enhancement
+      // Reset simulation with new particle count
+      this.model.resetSimulation(count);
+    });
+
+    // Particle speed slider
+    const particleSpeedSlider = document.getElementById("particle-speed") as HTMLInputElement;
+    const particleSpeedValue = document.getElementById("particle-speed-value");
+    
+    particleSpeedSlider?.addEventListener("input", (e) => {
+      const speed = parseFloat((e.target as HTMLInputElement).value);
+      if (particleSpeedValue) {
+        particleSpeedValue.textContent = speed.toFixed(1);
+      }
+      this.model.updateParticleSpeed(speed);
+    });
+
+    // World size slider
+    const worldSizeSlider = document.getElementById("world-size") as HTMLInputElement;
+    const worldSizeValue = document.getElementById("world-size-value");
+    
+    worldSizeSlider?.addEventListener("input", (e) => {
+      const size = parseInt((e.target as HTMLInputElement).value);
+      if (worldSizeValue) {
+        worldSizeValue.textContent = size.toString();
+      }
+      this.model.updateWorldSize(size);
     });
 
     // Handle window resize
@@ -84,6 +108,12 @@ class ElasticBrownianApp {
     this.updateElement("velocity-value", stats.velocity.toFixed(2));
     this.updateElement("displacement-value", stats.displacement.toFixed(2));
     
+    // Update particle count display
+    const particleCountValue = document.getElementById("particle-count-value");
+    if (particleCountValue) {
+      particleCountValue.textContent = stats.smallParticleCount.toString();
+    }
+    
     // Update Brownian motion indicator
     this.updateBrownianIndicator(analysis);
   }
@@ -107,10 +137,10 @@ class ElasticBrownianApp {
       return;
     }
 
-    if (analysis.isBrownianMotion && analysis.msdSlope > 0.1) {
+    if (analysis.isBrownianMotion && analysis.msdSlope > 0.01) {
       indicator.textContent = "Yes - Detected";
       indicator.classList.add("positive");
-    } else if (analysis.msdSlope < 0.01) {
+    } else if (analysis.msdSlope < 0.001) {
       indicator.textContent = "No - Static";
       indicator.classList.add("negative");
     } else {

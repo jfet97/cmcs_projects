@@ -25,13 +25,16 @@ export class Simulation {
     }
     this.ctx = ctx;
 
-    // Set canvas size
-    this.canvas.width = CONFIG.PHYSICS.worldSize * 2;
-    this.canvas.height = CONFIG.PHYSICS.worldSize * 2;
+    // Set initial canvas size (matching default world size)
+    const initialSize = CONFIG.PHYSICS.worldSize; // Use the default world size from config
+    this.canvas.width = initialSize;
+    this.canvas.height = initialSize;
     
     // Set canvas style for clean appearance
     this.canvas.style.border = "1px solid #ccc";
     this.canvas.style.background = "white";
+    this.canvas.style.width = initialSize + 'px';
+    this.canvas.style.height = initialSize + 'px';
   }
 
   public drawParticles() {
@@ -158,6 +161,18 @@ export class Simulation {
   // Method to get canvas for external manipulation if needed
   public getCanvas(): HTMLCanvasElement {
     return this.canvas;
+  }
+
+  // Method to update canvas size when world size changes
+  public updateCanvasSize(newSize: number) {
+    // Update canvas dimensions to match world size
+    const canvasSize = Math.max(200, Math.min(500, newSize));
+    this.canvas.width = canvasSize;
+    this.canvas.height = canvasSize;
+    
+    // Also update CSS dimensions for proper display
+    this.canvas.style.width = canvasSize + 'px';
+    this.canvas.style.height = canvasSize + 'px';
   }
 
   // Method to get current canvas image data (for screenshots, etc.)

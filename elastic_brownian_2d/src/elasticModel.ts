@@ -63,8 +63,9 @@ export class ElasticModel extends Model {
     };
   }
 
-  private setupSmallParticles() {
-    this.turtles.create(CONFIG.SMALL_PARTICLES.count, (turtle: ElasticParticle) => {
+  private setupSmallParticles(particleCount?: number) {
+    const count = particleCount || CONFIG.SMALL_PARTICLES.count;
+    this.turtles.create(count, (turtle: ElasticParticle) => {
       // Random position avoiding the large particle
       let x, y, distance;
       do {
@@ -136,11 +137,17 @@ export class ElasticModel extends Model {
   }
 
   // Public methods for external control
-  public resetSimulation() {
-    this.largeParticle.setxy(CONFIG.LARGE_PARTICLE.initialPosition.x, CONFIG.LARGE_PARTICLE.initialPosition.y);
-    this.largeParticle.vx = 0;
-    this.largeParticle.vy = 0;
+  public resetSimulation(newParticleCount?: number) {
+    // Clear all turtles except the large particle
+    this.turtles.clear();
     
+    // Recreate large particle
+    this.setupLargeParticle();
+    
+    // Create small particles with new count if provided
+    this.setupSmallParticles(newParticleCount);
+    
+    // Reset state
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
     this.largeParticleState.positionHistory = [];
@@ -148,6 +155,41 @@ export class ElasticModel extends Model {
     this.largeParticleState.totalEnergyReceived = 0;
 
     this.analysis.reset();
+  }
+
+  public updateParticleSpeed(newSpeed: number) {
+    // Update speed for all small particles
+    this.turtles.ask((turtle: ElasticParticle) => {
+      if (!turtle.isLarge) {
+        // Normalize current velocity and apply new speed
+        const currentSpeed = Math.sqrt(turtle.vx * turtle.vx + turtle.vy * turtle.vy);
+        if (currentSpeed > 0) {
+          const scale = newSpeed / currentSpeed;
+          turtle.vx *= scale;
+          turtle.vy *= scale;
+        } else {
+          // If particle is stationary, give it a random velocity
+          const angle = Math.random() * 2 * Math.PI;
+          turtle.vx = newSpeed * Math.cos(angle);
+          turtle.vy = newSpeed * Math.sin(angle);
+        }
+        turtle.speed = newSpeed;
+      }
+    });
+  }
+
+  public updateWorldSize(newSize: number) {
+    // Update world boundaries
+    this.world.minX = -newSize;
+    this.world.maxX = newSize;
+    this.world.minY = -newSize;
+    this.world.maxY = newSize;
+    
+    // Update canvas size to match the field size slider value
+    this.simulation.updateCanvasSize(newSize);
+    
+    // Reset simulation to apply new boundaries
+    this.resetSimulation();
   }
 
   public getStatistics() {
@@ -164,7 +206,8 @@ export class ElasticModel extends Model {
       collisions: this.largeParticleState.collisionCount,
       velocity: averageVelocity,
       displacement: totalDisplacement,
-      positionHistory: this.largeParticleState.positionHistory.length
+      positionHistory: this.largeParticleState.positionHistory.length,
+      smallParticleCount: this.turtles.length - 1 // exclude large particle
     };
   }
 }

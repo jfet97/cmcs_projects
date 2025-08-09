@@ -254,7 +254,7 @@ export class BrownianAnalysis {
       msdSlope: this.getMSDSlope(),
       averageKineticEnergy: this.getAverageKineticEnergy(),
       dataPoints: this.msdData.length,
-      isBrownianMotion: this.getMSDSlope() > 0.1 // Simple heuristic
+      isBrownianMotion: this.getMSDSlope() > 0.01 // Lowered threshold for detection
     };
   }
 }
