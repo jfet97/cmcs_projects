@@ -51,7 +51,6 @@ class ElasticBrownianApp {
       // Reset simulation with new particle count
       this.model.resetSimulation(count);
     });
-
     // Particle speed slider
     const particleSpeedSlider = document.getElementById("particle-speed") as HTMLInputElement;
     const particleSpeedValue = document.getElementById("particle-speed-value");
@@ -156,6 +155,8 @@ class ElasticBrownianApp {
 
   private resetSimulation() {
     this.model.resetSimulation();
+    // Resize canvas after reset to match current world size
+    (this.model as any).simulation.updateCanvasVisualSize((this.model as any).world);
 
     // Reset UI elements
     this.updateElement("ticks-value", "0");

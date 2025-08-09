@@ -211,8 +211,8 @@ export class ElasticModel extends Model {
     this.world.minY = -newSize;
     this.world.maxY = newSize;
 
-    // The canvas will be resized automatically at startup
-    // this.simulation.updateCanvasVisualSize(this.world);
+    // Resize the canvas to match the new world size
+    this.simulation.updateCanvasVisualSize(this.world);
 
     // COMPLETE RESET: clear everything and start fresh
     this.turtles.clear();
