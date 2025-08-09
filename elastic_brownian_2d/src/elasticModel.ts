@@ -1,6 +1,6 @@
 import { Model } from "agentscript";
 import { ElasticParticle, LargeParticleState, CONFIG } from "./particleTypes";
-import { 
+import {
   handleAllCollisions,
   moveSmallParticleWithRandomWalk,
   moveLargeParticle
@@ -37,7 +37,10 @@ export class ElasticModel extends Model {
   private setupLargeParticle() {
     // Create single large particle at center
     this.turtles.create(1, (turtle: ElasticParticle) => {
-      turtle.setxy(CONFIG.LARGE_PARTICLE.initialPosition.x, CONFIG.LARGE_PARTICLE.initialPosition.y);
+      turtle.setxy(
+        CONFIG.LARGE_PARTICLE.initialPosition.x,
+        CONFIG.LARGE_PARTICLE.initialPosition.y
+      );
       turtle.mass = CONFIG.LARGE_PARTICLE.mass;
       turtle.size = CONFIG.LARGE_PARTICLE.radius;
       turtle.color = CONFIG.LARGE_PARTICLE.color;
@@ -80,7 +83,7 @@ export class ElasticModel extends Model {
       turtle.color = CONFIG.SMALL_PARTICLES.color;
       turtle.shape = "circle";
       turtle.isLarge = false;
-      
+
       // Initial random velocity for thermal motion
       const angle = Math.random() * 2 * Math.PI;
       turtle.vx = CONFIG.SMALL_PARTICLES.speed * Math.cos(angle);
@@ -128,7 +131,9 @@ export class ElasticModel extends Model {
 
       // Limit history length for performance
       if (this.largeParticleState.positionHistory.length > CONFIG.ANALYSIS.historyLength) {
-        this.largeParticleState.positionHistory = this.largeParticleState.positionHistory.slice(-CONFIG.ANALYSIS.historyLength);
+        this.largeParticleState.positionHistory = this.largeParticleState.positionHistory.slice(
+          -CONFIG.ANALYSIS.historyLength
+        );
       }
     }
 
@@ -141,13 +146,13 @@ export class ElasticModel extends Model {
   public resetSimulation(newParticleCount?: number) {
     // Clear all turtles except the large particle
     this.turtles.clear();
-    
+
     // Recreate large particle
     this.setupLargeParticle();
-    
+
     // Create small particles with new count if provided
     this.setupSmallParticles(newParticleCount);
-    
+
     // Reset state
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
@@ -181,46 +186,48 @@ export class ElasticModel extends Model {
 
   public updateWorldSize(newSize: number) {
     console.log(`Updating world size to ${newSize} - FULL RESET`);
-    
+
     // Save current user parameters (NOT particle states!)
     const currentParticleCount = this.turtles.length - 1; // exclude large particle
     const currentSpeed = this.getSmallParticleSpeed(); // Get current speed setting
-    
+
     // Update world boundaries
     this.world.minX = -newSize;
     this.world.maxX = newSize;
     this.world.minY = -newSize;
     this.world.maxY = newSize;
-    
+
     // Update view dimensions
     this.viewWidth = newSize * 2;
     this.viewHeight = newSize * 2;
-    
+
     // Update canvas size to match the full world size
     this.simulation.updateCanvasSize(newSize * 2);
-    
+
     // COMPLETE RESET: clear everything and start fresh
     this.turtles.clear();
-    
+
     // Recreate large particle at center (fresh start)
     this.setupLargeParticle();
-    
+
     // Recreate small particles with saved count and speed
     this.setupSmallParticles(currentParticleCount);
     this.updateParticleSpeed(currentSpeed);
-    
+
     // Reset all state and analysis (fresh start)
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
     this.largeParticleState.positionHistory = [];
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.totalEnergyReceived = 0;
-    
+
     this.analysis.reset();
-    
-    console.log(`World size updated to ${newSize}. Fresh simulation with ${currentParticleCount} particles at speed ${currentSpeed}`);
+
+    console.log(
+      `World size updated to ${newSize}. Fresh simulation with ${currentParticleCount} particles at speed ${currentSpeed}`
+    );
   }
-  
+
   private getSmallParticleSpeed(): number {
     // Get current speed from existing small particles, or default
     let speed: number = CONFIG.SMALL_PARTICLES.speed;
@@ -237,8 +244,8 @@ export class ElasticModel extends Model {
     const currentMSD = this.analysis.getCurrentMSD();
     const averageVelocity = Math.sqrt(this.largeParticle.vx ** 2 + this.largeParticle.vy ** 2);
     const totalDisplacement = Math.sqrt(
-      (this.largeParticle.x - this.largeParticleState.x0) ** 2 + 
-      (this.largeParticle.y - this.largeParticleState.y0) ** 2
+      (this.largeParticle.x - this.largeParticleState.x0) ** 2 +
+        (this.largeParticle.y - this.largeParticleState.y0) ** 2
     );
 
     return {

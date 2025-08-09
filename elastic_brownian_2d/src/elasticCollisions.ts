@@ -26,11 +26,7 @@ export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGr
   };
 }
 
-function getNearbyParticles(
-  x: number,
-  y: number,
-  { grid, size }: SpatialGrid
-): ElasticParticle[] {
+function getNearbyParticles(x: number, y: number, { grid, size }: SpatialGrid): ElasticParticle[] {
   const nearbyParticles: ElasticParticle[] = [];
   const mainCellX = Math.floor(x / size);
   const mainCellY = Math.floor(y / size);
@@ -62,8 +58,10 @@ export function performElasticCollision(
   }
 
   // Prevent rapid repeated collisions
-  if (Math.abs(currentTick - particle1.lastCollisionTick) < CONFIG.PHYSICS.minCollisionInterval ||
-      Math.abs(currentTick - particle2.lastCollisionTick) < CONFIG.PHYSICS.minCollisionInterval) {
+  if (
+    Math.abs(currentTick - particle1.lastCollisionTick) < CONFIG.PHYSICS.minCollisionInterval ||
+    Math.abs(currentTick - particle2.lastCollisionTick) < CONFIG.PHYSICS.minCollisionInterval
+  ) {
     return false;
   }
 
@@ -72,7 +70,7 @@ export function performElasticCollision(
   if (overlap > 0) {
     const separationX = (dx / distance) * (overlap / 2);
     const separationY = (dy / distance) * (overlap / 2);
-    
+
     particle1.setxy(particle1.x - separationX, particle1.y - separationY);
     particle2.setxy(particle2.x + separationX, particle2.y + separationY);
   }
@@ -94,7 +92,7 @@ export function performElasticCollision(
   }
 
   // Calculate impulse scalar
-  const impulse = 2 * speed / (particle1.mass + particle2.mass);
+  const impulse = (2 * speed) / (particle1.mass + particle2.mass);
 
   // Update velocities based on elastic collision
   particle1.vx += impulse * particle2.mass * nx;
@@ -109,10 +107,7 @@ export function performElasticCollision(
   return true;
 }
 
-export function moveSmallParticleWithRandomWalk(
-  particle: ElasticParticle,
-  world: Model["world"]
-) {
+export function moveSmallParticleWithRandomWalk(particle: ElasticParticle, world: Model["world"]) {
   if (particle.isLarge) return;
 
   // Add small random thermal motion to maintain energy (much smaller)
@@ -120,7 +115,7 @@ export function moveSmallParticleWithRandomWalk(
   const thermalMagnitude = particle.speed * 0.02; // very small thermal kick
   particle.vx += thermalMagnitude * Math.cos(thermalAngle);
   particle.vy += thermalMagnitude * Math.sin(thermalAngle);
-  
+
   // Limit maximum speed to target speed
   const currentSpeed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
   if (currentSpeed > particle.speed * 1.2) {
@@ -153,15 +148,12 @@ export function moveSmallParticleWithRandomWalk(
   particle.setxy(newX, newY);
 }
 
-export function moveLargeParticle(
-  particle: ElasticParticle,
-  world: Model["world"]
-) {
+export function moveLargeParticle(particle: ElasticParticle, world: Model["world"]) {
   if (!particle.isLarge) return;
 
   // Account for particle radius to prevent going through walls
   const radius = particle.size;
-  
+
   // Limit velocity to prevent tunneling through boundaries
   const maxStep = Math.min(world.maxX - world.minX, world.maxY - world.minY) / 10;
   const currentStep = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
@@ -177,7 +169,7 @@ export function moveLargeParticle(
 
   // Handle boundary conditions with elastic reflection - robust approach
   let hitBoundary = false;
-  
+
   // X boundaries - check both current and new position
   if (newX + radius >= world.maxX) {
     newX = world.maxX - radius - 0.1; // clamp with small buffer
@@ -199,7 +191,7 @@ export function moveLargeParticle(
     particle.vy = Math.abs(particle.vy); // ensure velocity points inward
     hitBoundary = true;
   }
-  
+
   // Apply slight velocity damping when hitting boundaries to prevent infinite bouncing
   if (hitBoundary) {
     particle.vx *= 0.98;
@@ -213,15 +205,12 @@ export function moveLargeParticle(
   particle.setxy(newX, newY);
 }
 
-export function handleAllCollisions(
-  turtles: Turtles,
-  currentTick: number
-): number {
+export function handleAllCollisions(turtles: Turtles, currentTick: number): number {
   let collisionCount = 0;
   const grid = createSpatialGrid(turtles, CONFIG.LARGE_PARTICLE.radius * 3);
-  
+
   let largeParticle: ElasticParticle | undefined;
-  
+
   // Find the large particle
   turtles.ask((turtle: ElasticParticle) => {
     if (turtle.isLarge) {
@@ -232,11 +221,7 @@ export function handleAllCollisions(
   if (!largeParticle) return 0;
 
   // TypeScript now knows largeParticle is defined
-  const nearbyParticles = getNearbyParticles(
-    largeParticle.x,
-    largeParticle.y,
-    grid
-  );
+  const nearbyParticles = getNearbyParticles(largeParticle.x, largeParticle.y, grid);
 
   for (const smallParticle of nearbyParticles) {
     if (smallParticle === largeParticle || smallParticle.isLarge) continue;
