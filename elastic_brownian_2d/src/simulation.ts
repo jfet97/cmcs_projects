@@ -77,15 +77,15 @@ export class Simulation {
       // Large particle - prominent red circle
       this.ctx.fillStyle = CONFIG.LARGE_PARTICLE.color;
       this.ctx.strokeStyle = "darkred";
-      this.ctx.lineWidth = 2;
+      this.ctx.lineWidth = 2 / Math.abs(this.ctx.getTransform().a); // Scale line width correctly
     } else {
       // Small particles - subtle light blue circles
       this.ctx.fillStyle = CONFIG.SMALL_PARTICLES.color;
       this.ctx.strokeStyle = "blue";
-      this.ctx.lineWidth = 0.5;
+      this.ctx.lineWidth = 0.5 / Math.abs(this.ctx.getTransform().a); // Scale line width correctly
     }
 
-    // Draw particle
+    // Draw particle with proper size scaling
     this.ctx.beginPath();
     this.ctx.arc(particle.x, particle.y, particle.size, 0, 2 * Math.PI);
     this.ctx.fill();

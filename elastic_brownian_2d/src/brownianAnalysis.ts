@@ -122,6 +122,40 @@ export class BrownianAnalysis {
       this.velocityHistory = this.velocityHistory.slice(-1000);
     }
 
+    // Logica automatica per reset del riferimento MSD se la MSD è statica ma la particella si muove
+    if (this.msdData.length > 50 && currentTick % 50 === 0) {
+      const recentMSD = this.msdData.slice(-20);
+      const msdVariation = Math.max(...recentMSD) - Math.min(...recentMSD);
+      const currentVelocity = Math.sqrt(this.largeParticle.vx ** 2 + this.largeParticle.vy ** 2);
+      // Se la MSD è piatta e la particella si muove, reset automatico
+      if (msdVariation < 0.1 && currentVelocity > 0.1) {
+        this.resetReferencePosition();
+        console.log(
+          `MSD auto-reset: particle moving (${currentVelocity.toFixed(2)}) but MSD static (Δ=${msdVariation.toFixed(3)})`
+        );
+      }
+    }
+
+    // Check if MSD has become static and needs a reset
+    if (currentTick > 200 && this.msdData.length > 50) {
+      const recentMSD = this.msdData.slice(-10);
+      const msdVariation = Math.max(...recentMSD) - Math.min(...recentMSD);
+
+      // If MSD variation is very small, it might be stuck
+      if (msdVariation < 0.1 && currentTick % 100 === 0) {
+        console.log(
+          `MSD appears static (variation: ${msdVariation.toFixed(3)}), checking particle movement...`
+        );
+
+        // Check if particle is actually moving
+        const currentVelocity = Math.sqrt(this.largeParticle.vx ** 2 + this.largeParticle.vy ** 2);
+        if (currentVelocity > 0.1) {
+          console.log("Particle is moving but MSD is static - resetting reference position");
+          this.resetReferencePosition();
+        }
+      }
+    }
+
     // Update charts periodically
     if (currentTick % CONFIG.ANALYSIS.chartUpdateInterval === 0) {
       this.updateMSD(currentTick);
@@ -146,22 +180,27 @@ export class BrownianAnalysis {
       this.timeData = this.timeData.slice(-2000);
     }
 
+    // Update chart data
     this.msdChart.data.labels = this.timeData;
     this.msdChart.data.datasets[0].data = this.msdData;
     this.msdChart.update("none");
+
+    // Debug logging to see what's happening with MSD
+    if (currentTick % 100 === 0) {
+      console.log(
+        `Tick ${currentTick}: MSD = ${msd.toFixed(2)}, particle at (${this.largeParticle.x.toFixed(2)}, ${this.largeParticle.y.toFixed(2)}), ref at (${this.largeParticleState.x0.toFixed(2)}, ${this.largeParticleState.y0.toFixed(2)})`
+      );
+    }
   }
 
   private updateVelocityAutocorrelation() {
-    if (!this.velocityChart || this.velocityHistory.length < 50) {
-      return;
-    }
+    if (!this.velocityChart || this.velocityHistory.length < 20) return;
 
-    const maxLag = Math.min(100, Math.floor(this.velocityHistory.length / 2));
+    const maxLag = Math.min(50, Math.floor(this.velocityHistory.length / 2));
     const autocorrelations: number[] = [];
     const lags: number[] = [];
 
-    // Calculate autocorrelation for different time lags
-    for (let lag = 0; lag < maxLag; lag += 5) {
+    for (let lag = 0; lag < maxLag; lag++) {
       let sum = 0;
       let count = 0;
 
@@ -271,6 +310,30 @@ export class BrownianAnalysis {
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
     console.log(`Reference position updated to (${this.largeParticle.x}, ${this.largeParticle.y})`);
+  }
+
+  public resetReferencePosition() {
+    // Reset the reference position and clear MSD data for a fresh start
+    this.largeParticleState.x0 = this.largeParticle.x;
+    this.largeParticleState.y0 = this.largeParticle.y;
+
+    // Clear MSD data to start fresh
+    this.msdData = [];
+    this.timeData = [];
+
+    // Update the chart
+    this.msdChart.data.labels = [];
+    this.msdChart.data.datasets[0].data = [];
+    this.msdChart.update();
+
+    console.log(
+      `MSD reference position reset to (${this.largeParticle.x.toFixed(2)}, ${this.largeParticle.y.toFixed(2)})`
+    );
+  }
+
+  public resetMSD() {
+    // Public method to reset MSD data (called from UI)
+    this.resetReferencePosition();
   }
 
   public getAnalysisSummary() {

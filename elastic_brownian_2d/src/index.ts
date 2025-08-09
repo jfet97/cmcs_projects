@@ -35,6 +35,10 @@ class ElasticBrownianApp {
     const pauseBtn = document.getElementById("pause-btn");
     pauseBtn?.addEventListener("click", () => this.togglePause());
 
+    // Reset MSD button
+    const resetMsdBtn = document.getElementById("reset-msd-btn");
+    resetMsdBtn?.addEventListener("click", () => this.resetMSD());
+
     // Particle count slider
     const particleCountSlider = document.getElementById("particle-count") as HTMLInputElement;
     const particleCountValue = document.getElementById("particle-count-value");
@@ -173,6 +177,10 @@ class ElasticBrownianApp {
     if (pauseBtn) {
       pauseBtn.textContent = this.isPaused ? "Resume" : "Pause";
     }
+  }
+
+  private resetMSD() {
+    this.model.analysis.resetMSD();
   }
 
   private handleResize() {
