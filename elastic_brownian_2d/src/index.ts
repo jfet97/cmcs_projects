@@ -100,6 +100,11 @@ class ElasticBrownianApp {
       return;
     }
 
+    // Make sure analysis is initialized before accessing it
+    if (!this.model.analysis) {
+      return;
+    }
+
     this.lastStatsUpdate = now;
     const stats = this.model.getStatistics();
     const analysis = this.model.analysis.getAnalysisSummary();
@@ -155,8 +160,7 @@ class ElasticBrownianApp {
 
   private resetSimulation() {
     this.model.resetSimulation();
-    // Resize canvas after reset to match current world size
-    (this.model as any).simulation.updateCanvasVisualSize((this.model as any).world);
+    // Canvas size is already handled by resetSimulation() in the model
 
     // Reset UI elements
     this.updateElement("ticks-value", "0");
@@ -187,21 +191,13 @@ class ElasticBrownianApp {
   private handleResize() {
     // Force a redraw of the simulation after window resize
     // This ensures the canvas scaling is properly updated
-    if (this.model && this.model.simulation) {
-      this.model.simulation.drawParticles((this.model as any).world);
+    if (this.model && this.model.getSimulation()) {
+      this.model.getSimulation().drawParticles(this.model.getWorld());
     }
 
     // Also update charts if they exist
-    if (this.model && this.model.analysis) {
-      const msdChart = (this.model.analysis as any).msdChart;
-      const velocityChart = (this.model.analysis as any).velocityChart;
-
-      if (msdChart) {
-        msdChart.resize();
-      }
-      if (velocityChart) {
-        velocityChart.resize();
-      }
+    if (this.model && this.model.getAnalysis()) {
+      this.model.getAnalysis().resizeCharts();
     }
   }
 

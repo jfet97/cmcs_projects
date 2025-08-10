@@ -23,8 +23,8 @@ export class ElasticModel extends Model {
     this.setupSmallParticles();
     this.initializeAnalysis();
     this.initializeVisualization();
-    // Ensure canvas size maps 1:1 with current world at startup
-    this.simulation.resizeCanvasForWorld(this.world, 1);
+    // Initialize canvas size coordinated with world size
+    this.simulation.updateCanvasVisualSize(this.world);
   }
 
   private setupLargeParticle() {
@@ -169,6 +169,9 @@ export class ElasticModel extends Model {
 
     this.analysis.reset();
 
+    // Ensure canvas is properly sized for current world
+    this.simulation.updateCanvasVisualSize(this.world);
+
     // Reset tick counter so everything restarts from zero
     this.ticks = 0;
 
@@ -276,5 +279,18 @@ export class ElasticModel extends Model {
       positionHistory: this.largeParticleState.positionHistory.length,
       smallParticleCount: this.turtles.length - 1 // exclude large particle
     };
+  }
+
+  // Public getters to avoid 'as any' casts
+  public getWorld() {
+    return this.world;
+  }
+
+  public getSimulation() {
+    return this.simulation;
+  }
+
+  public getAnalysis() {
+    return this.analysis;
   }
 }

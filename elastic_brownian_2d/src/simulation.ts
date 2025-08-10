@@ -177,14 +177,26 @@ export class Simulation {
     return this.canvas;
   }
 
-  // Method to update canvas visual size when world changes - DISABLED FOR SIMPLICITY
+  // Method to update canvas visual size when world changes
   public updateCanvasVisualSize(worldBounds: {
     minX: number;
     maxX: number;
     minY: number;
     maxY: number;
   }) {
-    this.resizeCanvasForWorld(worldBounds, this.pixelsPerUnit);
+    // Calculate dynamic canvas size that grows/shrinks with world but stays reasonable
+    const worldWidth = worldBounds.maxX - worldBounds.minX;
+    
+    // Dynamic canvas size: smaller worlds get smaller canvas, larger worlds get larger canvas
+    // But we keep it in a reasonable range (300-600px)
+    const minCanvasSize = 300;
+    const maxCanvasSize = 600;
+    const canvasSize = Math.max(minCanvasSize, Math.min(maxCanvasSize, worldWidth * 1.5));
+    
+    const optimalPixelsPerUnit = canvasSize / worldWidth;
+    
+    this.pixelsPerUnit = optimalPixelsPerUnit;
+    this.resizeCanvasForWorld(worldBounds, optimalPixelsPerUnit);
   }
 
   // Method to get current canvas image data (for screenshots, etc.)
@@ -192,24 +204,26 @@ export class Simulation {
     return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  // Resize canvas so that its pixel size matches world size
+  // Resize canvas so that its pixel size is coordinated with world size
   public resizeCanvasForWorld(
     worldBounds: { minX: number; maxX: number; minY: number; maxY: number },
-    pixelsPerUnit = 1
+    pixelsPerUnit: number
   ) {
     const worldWidth = worldBounds.maxX - worldBounds.minX;
     const worldHeight = worldBounds.maxY - worldBounds.minY;
 
-    // Calculate canvas size based on world dimensions and scale
+    // Calculate actual canvas size based on world dimensions and scale
     const canvasWidth = worldWidth * pixelsPerUnit;
     const canvasHeight = worldHeight * pixelsPerUnit;
 
-    // Set canvas dimensions
+    // Set canvas internal dimensions (affects rendering resolution)
     this.canvas.width = canvasWidth;
     this.canvas.height = canvasHeight;
 
-    // Also update style to ensure layout consistency
+    // Set canvas visual dimensions (affects layout size)
     this.canvas.style.width = `${canvasWidth}px`;
     this.canvas.style.height = `${canvasHeight}px`;
+
+    console.log(`Canvas resized: ${canvasWidth}x${canvasHeight}px for world ${worldWidth}x${worldHeight} (pixelsPerUnit: ${pixelsPerUnit.toFixed(2)})`);
   }
 }

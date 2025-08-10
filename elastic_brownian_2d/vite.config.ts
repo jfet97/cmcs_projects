@@ -2,6 +2,10 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: './src',
+  build: {
+    outDir: './dist',
+    emptyOutDir: true
+  },
   server: {
     port: 3000,
     strictPort: true,
@@ -11,9 +15,6 @@ export default defineConfig({
     headers: {
       'Cache-Control': 'no-store',
     },
-  },
-  build: {
-    outDir: './dist',
   },
   optimizeDeps: {
     force: true,
