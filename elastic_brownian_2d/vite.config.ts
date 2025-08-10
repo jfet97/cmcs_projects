@@ -1,21 +1,19 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig({
-  root: './src',
+  root: 'src',
   build: {
     outDir: '../dist',
     emptyOutDir: true,
-    rollupOptions: {
-      input: './src/index.html'
-    }
   },
   server: {
     port: 3000,
-    open: true
+    open: true,
   },
   resolve: {
     alias: {
-      '@': '/src'
-    }
-  }
-})
+      '@': resolve(__dirname, 'src'),
+    },
+  },
+});
