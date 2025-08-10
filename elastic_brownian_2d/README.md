@@ -1,21 +1,21 @@
 # Elastic Collision Brownian Motion Simulation
 
-A TypeScript-based simulation demonstrating **Brownian motion** through elastic collisions between one large particle and many small particles. This project showcases how random thermal motion of small particles can induce characteristic Brownian motion in a larger particle through momentum transfer during collisions.
+A TypeScript-based physics simulation demonstrating **Brownian motion** through elastic collisions between thermal particles and a large particle. Built with AgentScript physics engine and real-time statistical analysis.
 
-![Simulation Preview](https://img.shields.io/badge/TypeScript-Physics_Simulation-blue?style=flat-square&logo=typescript)
+![TypeScript](https://img.shields.io/badge/TypeScript-Physics_Simulation-blue?style=flat-square&logo=typescript)
 ![Build Status](https://img.shields.io/badge/Build-Vite-brightgreen?style=flat-square&logo=vite)
 ![Framework](https://img.shields.io/badge/Framework-AgentScript-orange?style=flat-square)
 
 ## 🎯 Overview
 
-This simulation implements a **physically accurate elastic collision system** where:
-- **One large red particle** (mass=50, radius=8) starts at rest at the center
-- **Many small blue particles** (mass=1, radius=1.5) undergo thermal motion
+This simulation recreates the fundamental physics behind Brownian motion:
+- **One large red particle** (mass=100, radius=6) starts at rest at the origin
+- **300 small blue particles** (mass=1, radius=1.2) undergo continuous thermal motion
 - **Elastic collisions** transfer momentum from small to large particles
+- **Cumulative random collisions** cause the large particle to exhibit characteristic Brownian motion
 - **Real-time analysis** tracks Mean Squared Displacement (MSD) and velocity autocorrelation
-- **Interactive controls** allow parameter adjustments during simulation
 
-The large particle's motion emerges naturally from the cumulative effect of random collisions, demonstrating the fundamental principles of Brownian motion discovered by Robert Brown in 1827 and explained by Einstein in 1905.
+The simulation demonstrates how microscopic thermal motion creates observable macroscopic phenomena, validating Einstein's 1905 theory of Brownian motion.
 
 ## 🚀 Quick Start
 
@@ -61,23 +61,23 @@ pnpm lint:fix
 ### Particle System
 | Component | Mass | Radius | Color | Behavior |
 |-----------|------|--------|-------|----------|
-| **Large Particle** | 50 | 8 units | Red | Initially at rest, moves via collisions |
-| **Small Particles** | 1 | 1.5 units | Light Blue | Random thermal motion |
+| **Large Particle** | 100 | 6 units | Red | Initially at rest, moves via collisions |
+| **Small Particles** | 1 | 1.2 units | Light Blue | Maxwell-Boltzmann thermal motion |
 
 ### Collision Mechanics
-- **Fully elastic collisions** with momentum and energy conservation
-- **Collision detection** optimized with spatial grid system (O(n) complexity)
-- **Separation handling** prevents particle overlap
-- **Collision throttling** prevents rapid repeated collisions
-- **Boundary reflection** at simulation edges
+- **Perfectly elastic collisions** with momentum and energy conservation
+- **Reduced mass formula** for accurate momentum transfer between different masses
+- **Spatial grid optimization** reduces collision detection from O(n²) to O(n)
+- **Collision throttling** prevents numerical instability
+- **Elastic boundary reflection** at simulation edges
 
 ### Physics Parameters
 ```typescript
 CONFIG = {
-  LARGE_PARTICLE: { mass: 50, radius: 8 },
-  SMALL_PARTICLES: { count: 500, mass: 1, radius: 1.5, speed: 4 },
-  PHYSICS: { worldSize: 200, minCollisionInterval: 3 },
-  ANALYSIS: { msdUpdateInterval: 5, chartUpdateInterval: 10 }
+  LARGE_PARTICLE: { mass: 100, radius: 6, initialPosition: {x: 0, y: 0} },
+  SMALL_PARTICLES: { count: 300, mass: 1, radius: 1.2, speed: 3.0 },
+  PHYSICS: { worldSize: 300, collisionBuffer: 0.3, minCollisionInterval: 2 },
+  ANALYSIS: { msdUpdateInterval: 3, historyLength: 15000, chartUpdateInterval: 8 }
 }
 ```
 
