@@ -1,19 +1,21 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
 
 export default defineConfig({
-  root: 'src',
-  build: {
-    outDir: '../dist',
-    emptyOutDir: true,
-  },
+  root: './src',
   server: {
     port: 3000,
-    open: true,
-  },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src'),
+    strictPort: true,
+    hmr: {
+      port: 3001,
     },
+    headers: {
+      'Cache-Control': 'no-store',
+    },
+  },
+  build: {
+    outDir: './dist',
+  },
+  optimizeDeps: {
+    force: true,
   },
 });
