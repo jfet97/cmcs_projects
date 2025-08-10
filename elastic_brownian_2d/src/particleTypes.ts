@@ -21,7 +21,7 @@ export interface LargeParticleState {
 
 export const CONFIG = {
   LARGE_PARTICLE: {
-    mass: 100, // increased for better momentum transfer ratio
+    mass: 25, // reduced for more responsive Brownian motion
     radius: 6, // slightly smaller for better dynamics
     initialPosition: { x: 0, y: 0 },
     color: "red"
