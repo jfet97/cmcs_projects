@@ -21,28 +21,28 @@ export interface LargeParticleState {
 
 export const CONFIG = {
   LARGE_PARTICLE: {
-    mass: 50,
-    radius: 8,
+    mass: 100, // increased for better momentum transfer ratio
+    radius: 6, // slightly smaller for better dynamics
     initialPosition: { x: 0, y: 0 },
     color: "red"
   },
   SMALL_PARTICLES: {
-    count: 500, // scalable 100-1000
+    count: 300, // reduced for better performance and realistic density
     mass: 1,
-    radius: 1.5,
-    stepSize: 3.5, // random walk step size
-    speed: 4, // thermal motion speed
+    radius: 1.2, // slightly smaller for better packing
+    stepSize: 2.0, // reduced random walk for more realistic thermal motion
+    speed: 3.0, // optimal speed for observable Brownian motion
     color: "lightblue"
   },
   PHYSICS: {
-    worldSize: 200, // simulation boundaries (reduced for better density)
+    worldSize: 300, // increased for proper particle density
     timeStep: 1, // simulation time unit
-    collisionBuffer: 0.5, // collision detection margin
-    minCollisionInterval: 3 // minimum ticks between collisions for same pair
+    collisionBuffer: 0.3, // reduced buffer for more precise collisions
+    minCollisionInterval: 2 // reduced to allow more natural collision frequency
   },
   ANALYSIS: {
-    msdUpdateInterval: 5, // calculate MSD every 5 steps
-    historyLength: 10000, // position history buffer
-    chartUpdateInterval: 10 // update charts every 10 steps
+    msdUpdateInterval: 3, // more frequent MSD updates for smoother analysis
+    historyLength: 15000, // increased buffer for longer analysis
+    chartUpdateInterval: 8 // slightly faster chart updates
   }
 } as const;

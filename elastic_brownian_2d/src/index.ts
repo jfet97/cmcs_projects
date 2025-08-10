@@ -7,14 +7,42 @@ class ElasticBrownianApp {
   private isPaused = false;
   private lastStatsUpdate = 0;
 
+  // UI State Management - maintain slider values independently from simulation state
+  private uiState = {
+    particleCount: CONFIG.SMALL_PARTICLES.count,
+    particleSpeed: CONFIG.SMALL_PARTICLES.speed,
+    worldSize: CONFIG.PHYSICS.worldSize
+  };
+
   constructor() {
+    this.initializeUIState();
     this.initializeModel();
     this.setupEventListeners();
     this.startSimulation();
   }
 
+  private initializeUIState() {
+    // Sync UI state with actual slider values to prevent inconsistencies
+    const particleCountSlider = document.getElementById("particle-count") as HTMLInputElement;
+    const particleSpeedSlider = document.getElementById("particle-speed") as HTMLInputElement;
+    const worldSizeSlider = document.getElementById("world-size") as HTMLInputElement;
+
+    if (particleCountSlider) {
+      this.uiState.particleCount = parseInt(particleCountSlider.value);
+    }
+    if (particleSpeedSlider) {
+      this.uiState.particleSpeed = parseFloat(particleSpeedSlider.value);
+    }
+    if (worldSizeSlider) {
+      this.uiState.worldSize = parseInt(worldSizeSlider.value);
+    }
+
+    console.log("UI State initialized:", this.uiState);
+  }
+
   private initializeModel() {
-    const worldSize = CONFIG.PHYSICS.worldSize;
+    // Use UI state for world size to ensure consistency
+    const worldSize = this.uiState.worldSize;
 
     this.model = new ElasticModel({
       minX: -worldSize,
@@ -45,11 +73,12 @@ class ElasticBrownianApp {
 
     particleCountSlider?.addEventListener("input", e => {
       const count = parseInt((e.target as HTMLInputElement).value);
+      this.uiState.particleCount = count;
       if (particleCountValue) {
         particleCountValue.textContent = count.toString();
       }
-      // Reset simulation with new particle count
-      this.model.resetSimulation(count);
+      // Reset simulation with new particle count, preserving current speed
+      this.model.resetSimulation(count, this.uiState.particleSpeed);
     });
     // Particle speed slider
     const particleSpeedSlider = document.getElementById("particle-speed") as HTMLInputElement;
@@ -57,6 +86,7 @@ class ElasticBrownianApp {
 
     particleSpeedSlider?.addEventListener("input", e => {
       const speed = parseFloat((e.target as HTMLInputElement).value);
+      this.uiState.particleSpeed = speed;
       if (particleSpeedValue) {
         particleSpeedValue.textContent = speed.toFixed(1);
       }
@@ -69,10 +99,11 @@ class ElasticBrownianApp {
 
     worldSizeSlider?.addEventListener("input", e => {
       const size = parseInt((e.target as HTMLInputElement).value);
+      this.uiState.worldSize = size;
       if (worldSizeValue) {
         worldSizeValue.textContent = size.toString();
       }
-      this.model.updateWorldSize(size);
+      this.model.updateWorldSize(size, this.uiState.particleCount, this.uiState.particleSpeed);
     });
 
     // Handle window resize
@@ -159,7 +190,7 @@ class ElasticBrownianApp {
   }
 
   private resetSimulation() {
-    this.model.resetSimulation();
+    this.model.resetSimulation(this.uiState.particleCount, this.uiState.particleSpeed);
     // Canvas size is already handled by resetSimulation() in the model
 
     // Reset UI elements
@@ -208,6 +239,11 @@ class ElasticBrownianApp {
 
   public getStatistics() {
     return this.model.getStatistics();
+  }
+
+  // Public method to get current UI state for model to access
+  public getCurrentUIState() {
+    return { ...this.uiState };
   }
 }
 

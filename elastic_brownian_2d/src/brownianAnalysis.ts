@@ -136,11 +136,12 @@ export class BrownianAnalysis {
           }, 0) / recentVelocities.length;
       }
 
-      // Only reset if particle is truly stuck (very low average velocity)
-      if (avgVelocity < 0.01 && currentVelocity < 0.01) {
+      // Only reset if particle is truly stuck AND MSD is not growing
+      const msdSlope = this.getMSDSlope();
+      if (avgVelocity < 0.005 && currentVelocity < 0.005 && Math.abs(msdSlope) < 0.0001) {
         this.resetReferencePosition();
         console.log(
-          `MSD auto-reset: particle stuck (avg velocity: ${avgVelocity.toFixed(3)}, current: ${currentVelocity.toFixed(3)})`
+          `MSD auto-reset: particle stuck (avg velocity: ${avgVelocity.toFixed(4)}, current: ${currentVelocity.toFixed(4)}, slope: ${msdSlope.toFixed(6)})`
         );
       }
     }
@@ -250,8 +251,11 @@ export class BrownianAnalysis {
       sumXY = 0,
       sumX2 = 0;
 
+    // Normalize time data to prevent numerical issues
+    const timeOffset = this.timeData[startIdx];
+    
     for (let i = 0; i < recentData; i++) {
-      const x = this.timeData[startIdx + i];
+      const x = this.timeData[startIdx + i] - timeOffset; // normalized time
       const y = this.msdData[startIdx + i];
       sumX += x;
       sumY += y;
@@ -260,7 +264,12 @@ export class BrownianAnalysis {
     }
 
     const n = recentData;
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const denominator = n * sumX2 - sumX * sumX;
+    
+    // Prevent division by zero
+    if (Math.abs(denominator) < 1e-10) return 0;
+    
+    const slope = (n * sumXY - sumX * sumY) / denominator;
     return slope;
   }
 

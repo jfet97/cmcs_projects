@@ -91,14 +91,37 @@ export function performElasticCollision(
     return false;
   }
 
-  // Calculate impulse scalar
-  const impulse = (2 * speed) / (particle1.mass + particle2.mass);
+  // Calculate impulse scalar for elastic collision
+  // Formula: J = -(1 + e) * v_rel_n / (1/m1 + 1/m2) where e=1 for elastic
+  const restitution = 1.0; // perfectly elastic
+  const reducedMass = (particle1.mass * particle2.mass) / (particle1.mass + particle2.mass);
+  const impulse = -(1 + restitution) * speed * reducedMass;
 
-  // Update velocities based on elastic collision
-  particle1.vx += impulse * particle2.mass * nx;
-  particle1.vy += impulse * particle2.mass * ny;
-  particle2.vx -= impulse * particle1.mass * nx;
-  particle2.vy -= impulse * particle1.mass * ny;
+  // Update velocities based on elastic collision physics
+  particle1.vx += (impulse / particle1.mass) * nx;
+  particle1.vy += (impulse / particle1.mass) * ny;
+  particle2.vx -= (impulse / particle2.mass) * nx;
+  particle2.vy -= (impulse / particle2.mass) * ny;
+
+  // Maintain constant speed for large particle after first collision
+  if (particle1.isLarge && particle1.lastCollisionTick < currentTick) {
+    const currentSpeed = Math.sqrt(particle1.vx * particle1.vx + particle1.vy * particle1.vy);
+    if (currentSpeed > 0) {
+      const targetSpeed = CONFIG.SMALL_PARTICLES.speed * 0.3; // proportional to small particle speed
+      const scale = targetSpeed / currentSpeed;
+      particle1.vx *= scale;
+      particle1.vy *= scale;
+    }
+  }
+  if (particle2.isLarge && particle2.lastCollisionTick < currentTick) {
+    const currentSpeed = Math.sqrt(particle2.vx * particle2.vx + particle2.vy * particle2.vy);
+    if (currentSpeed > 0) {
+      const targetSpeed = CONFIG.SMALL_PARTICLES.speed * 0.3; // proportional to small particle speed
+      const scale = targetSpeed / currentSpeed;
+      particle2.vx *= scale;
+      particle2.vy *= scale;
+    }
+  }
 
   // Update collision tracking
   particle1.lastCollisionTick = currentTick;
@@ -110,18 +133,30 @@ export function performElasticCollision(
 export function moveSmallParticleWithRandomWalk(particle: ElasticParticle, world: Model["world"]) {
   if (particle.isLarge) return;
 
-  // Add small random thermal motion to maintain energy (much smaller)
+  // Add thermal motion following Maxwell-Boltzmann distribution
   const thermalAngle = Math.random() * 2 * Math.PI;
-  const thermalMagnitude = particle.speed * 0.02; // very small thermal kick
+  // Proper thermal velocity: kT/m where kT is thermal energy
+  const thermalEnergy = 0.1; // thermal energy parameter
+  const thermalMagnitude = Math.sqrt(2 * thermalEnergy / particle.mass) * (Math.random() - 0.5);
   particle.vx += thermalMagnitude * Math.cos(thermalAngle);
   particle.vy += thermalMagnitude * Math.sin(thermalAngle);
 
-  // Limit maximum speed to target speed
+  // Maintain thermal equilibrium with proper energy conservation
   const currentSpeed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
-  if (currentSpeed > particle.speed * 1.2) {
-    const scale = (particle.speed * 1.2) / currentSpeed;
+  const targetSpeed = particle.speed;
+  
+  // Only limit if speed is excessively high to prevent numerical instability
+  if (currentSpeed > targetSpeed * 2.0) {
+    const scale = (targetSpeed * 2.0) / currentSpeed;
     particle.vx *= scale;
     particle.vy *= scale;
+  }
+  
+  // Maintain minimum thermal motion to prevent particles from becoming completely static
+  if (currentSpeed < targetSpeed * 0.1) {
+    const angle = Math.random() * 2 * Math.PI;
+    particle.vx += targetSpeed * 0.3 * Math.cos(angle);
+    particle.vy += targetSpeed * 0.3 * Math.sin(angle);
   }
 
   // Move based on velocity

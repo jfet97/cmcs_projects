@@ -187,16 +187,27 @@ export class Simulation {
     // Calculate dynamic canvas size that grows/shrinks with world but stays reasonable
     const worldWidth = worldBounds.maxX - worldBounds.minX;
     
-    // Dynamic canvas size: smaller worlds get smaller canvas, larger worlds get larger canvas
-    // But we keep it in a reasonable range (300-600px)
-    const minCanvasSize = 300;
-    const maxCanvasSize = 600;
-    const canvasSize = Math.max(minCanvasSize, Math.min(maxCanvasSize, worldWidth * 1.5));
+    // Only resize if world size actually changed significantly to prevent zoom flickering
+    const currentWorldWidth = this.canvas.width / this.pixelsPerUnit;
+    if (Math.abs(worldWidth - currentWorldWidth) < worldWidth * 0.1) {
+      return; // Skip resize if change is less than 10%
+    }
+    
+    // Calculate optimal canvas size based on world dimensions and screen constraints
+    const minCanvasSize = 400;
+    const maxCanvasSize = 800;
+    
+    // Use a fixed pixel density that works well for visualization
+    const targetPixelsPerUnit = 1.5;
+    const idealCanvasSize = worldWidth * targetPixelsPerUnit;
+    const canvasSize = Math.max(minCanvasSize, Math.min(maxCanvasSize, idealCanvasSize));
     
     const optimalPixelsPerUnit = canvasSize / worldWidth;
     
     this.pixelsPerUnit = optimalPixelsPerUnit;
     this.resizeCanvasForWorld(worldBounds, optimalPixelsPerUnit);
+    
+    console.log(`Canvas resized: world changed from ${currentWorldWidth.toFixed(1)} to ${worldWidth} units`);
   }
 
   // Method to get current canvas image data (for screenshots, etc.)

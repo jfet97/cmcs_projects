@@ -149,7 +149,7 @@ export class ElasticModel extends Model {
   }
 
   // Public methods for external control
-  public resetSimulation(newParticleCount?: number) {
+  public resetSimulation(newParticleCount?: number, preserveSpeed?: number) {
     // Clear all turtles except the large particle
     this.turtles.clear();
 
@@ -158,19 +158,29 @@ export class ElasticModel extends Model {
 
     // Create small particles with new count if provided
     this.setupSmallParticles(newParticleCount);
+    
+    // Apply preserved speed if provided
+    if (preserveSpeed !== undefined) {
+      this.updateParticleSpeed(preserveSpeed);
+    }
 
-    // Reset state with actual particle position
+    // Reset state and analysis in correct sequence to prevent inconsistencies
+    // 1. First reset analysis to clear all accumulated data
+    this.analysis.reset();
+    
+    // 2. Update state with current particle position  
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
     this.largeParticleState.positionHistory = [];
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.totalEnergyReceived = 0;
     this.largeParticleState.lastCollisionTick = -1;
+    
+    // 3. Sync analysis reference position with state (must be after state reset)
+    this.analysis.updateReferencePosition();
 
-    this.analysis.reset();
-
-    // Ensure canvas is properly sized for current world
-    this.simulation.updateCanvasVisualSize(this.world);
+    // Canvas size should remain unchanged when just resetting particle count
+    // Only resize canvas when world size actually changes (in updateWorldSize method)
 
     // Reset tick counter so everything restarts from zero
     this.ticks = 0;
@@ -201,12 +211,12 @@ export class ElasticModel extends Model {
     });
   }
 
-  public updateWorldSize(newSize: number) {
+  public updateWorldSize(newSize: number, preserveParticleCount?: number, preserveSpeed?: number) {
     console.log(`Updating world size to ${newSize} - FULL RESET`);
 
-    // Save current user parameters (NOT particle states!)
-    const currentParticleCount = this.turtles.length - 1; // exclude large particle
-    const currentSpeed = this.getSmallParticleSpeed(); // Get current speed setting
+    // Use preserved parameters from UI if provided, otherwise derive from current state
+    const currentParticleCount = preserveParticleCount !== undefined ? preserveParticleCount : (this.turtles.length - 1);
+    const currentSpeed = preserveSpeed !== undefined ? preserveSpeed : this.getSmallParticleSpeed(preserveSpeed);
 
     // Update world boundaries
     this.world.minX = -newSize;
@@ -227,17 +237,20 @@ export class ElasticModel extends Model {
     this.setupSmallParticles(currentParticleCount);
     this.updateParticleSpeed(currentSpeed);
 
-    // Reset all state and analysis (fresh start)
-    // Make sure we use the actual particle position after setup
+    // Reset state and analysis in correct sequence (same as resetSimulation)
+    // 1. First reset analysis to clear all accumulated data
+    this.analysis.reset();
+    
+    // 2. Update state with current particle position after setup
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
     this.largeParticleState.positionHistory = [];
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.totalEnergyReceived = 0;
     this.largeParticleState.lastCollisionTick = -1;
-
-    // Reset analysis with new reference position
-    this.analysis.reset();
+    
+    // 3. Sync analysis reference position with state
+    this.analysis.updateReferencePosition();
 
     // Also reset ticks to start fresh
     this.ticks = 0;
@@ -250,16 +263,17 @@ export class ElasticModel extends Model {
     );
   }
 
-  private getSmallParticleSpeed(): number {
-    // Get current speed from existing small particles, or default
-    let speed: number = CONFIG.SMALL_PARTICLES.speed;
-    this.turtles.ask((turtle: ElasticParticle) => {
+  private getSmallParticleSpeed(fallbackSpeed?: number): number {
+    // Try to get speed from existing small particles first
+    for (let i = 0; i < this.turtles.length; i++) {
+      const turtle = this.turtles[i] as ElasticParticle;
       if (!turtle.isLarge) {
-        speed = turtle.speed;
-        return; // Exit early after finding first small particle
+        return turtle.speed;
       }
-    });
-    return speed;
+    }
+    
+    // If no small particles exist, use fallback if provided, otherwise CONFIG default
+    return fallbackSpeed !== undefined ? fallbackSpeed : CONFIG.SMALL_PARTICLES.speed;
   }
 
   public getStatistics() {
