@@ -22,35 +22,18 @@ class ElasticBrownianApp {
   }
 
   private initializeUIState() {
-    // Sync UI state with actual slider values to prevent inconsistencies
     const particleCountSlider = document.getElementById("particle-count") as HTMLInputElement;
     const particleSpeedSlider = document.getElementById("particle-speed") as HTMLInputElement;
     const worldSizeSlider = document.getElementById("world-size") as HTMLInputElement;
 
-    if (particleCountSlider) {
-      this.uiState.particleCount = parseInt(particleCountSlider.value);
-    }
-    if (particleSpeedSlider) {
-      this.uiState.particleSpeed = parseFloat(particleSpeedSlider.value);
-    }
-    if (worldSizeSlider) {
-      this.uiState.worldSize = parseInt(worldSizeSlider.value);
-    }
-
-    console.log("UI State initialized:", this.uiState);
+    if (particleCountSlider) this.uiState.particleCount = parseInt(particleCountSlider.value);
+    if (particleSpeedSlider) this.uiState.particleSpeed = parseFloat(particleSpeedSlider.value);
+    if (worldSizeSlider) this.uiState.worldSize = parseInt(worldSizeSlider.value);
   }
 
   private initializeModel() {
-    // Use UI state for world size to ensure consistency
-    const worldSize = this.uiState.worldSize;
-
-    this.model = new ElasticModel({
-      minX: -worldSize,
-      maxX: worldSize,
-      minY: -worldSize,
-      maxY: worldSize
-    });
-
+    const size = this.uiState.worldSize;
+    this.model = new ElasticModel({ minX: -size, maxX: size, minY: -size, maxY: size });
     this.model.startup();
   }
 
@@ -220,16 +203,10 @@ class ElasticBrownianApp {
   }
 
   private handleResize() {
-    // Force a redraw of the simulation after window resize
-    // This ensures the canvas scaling is properly updated
-    if (this.model && this.model.getSimulation()) {
-      this.model.getSimulation().drawParticles(this.model.getWorld());
+    if (this.model?.simulation) {
+      this.model.simulation.drawParticles(this.model.world);
     }
-
-    // Also update charts if they exist
-    if (this.model && this.model.getAnalysis()) {
-      this.model.getAnalysis().resizeCharts();
-    }
+    this.model?.analysis?.resizeCharts();
   }
 
   // Public methods for debugging/testing

@@ -33,41 +33,18 @@ export class Simulation {
   }
 
   public drawParticles(worldBounds: { minX: number; maxX: number; minY: number; maxY: number }) {
-    // Check if canvas and context are valid
-    if (!this.canvas || !this.ctx) {
-      console.warn("Canvas or context not available for drawing");
-      return;
-    }
+    if (!this.canvas || !this.ctx) return;
 
-    // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Calculate world dimensions from bounds
-    const worldWidth = worldBounds.maxX - worldBounds.minX;
-    const worldHeight = worldBounds.maxY - worldBounds.minY;
-
-    // Validate world bounds
-    if (worldWidth <= 0 || worldHeight <= 0) {
-      console.warn("Invalid world bounds:", worldBounds);
-      return;
-    }
-
-    // Transform coordinates: world coordinates to canvas coordinates
     this.ctx.save();
     this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-    // The scale should be based on the canvas dimension vs the world dimension.
-    // Since the canvas is now sized to the world, the scale is simply pixelsPerUnit.
-    // We use a negative scale for Y to flip the coordinate system (Y-up).
     this.ctx.scale(this.pixelsPerUnit, -this.pixelsPerUnit);
 
-    // Draw all particles
     this.turtles.ask((turtle: ElasticParticle) => {
       this.drawParticle(turtle);
     });
 
-    // Draw subtle crosshairs at origin for reference
     this.drawOriginMarker();
-
     this.ctx.restore();
   }
 
@@ -93,56 +70,10 @@ export class Simulation {
     this.ctx.fill();
     this.ctx.stroke();
 
-    // Optional: Draw velocity vector for large particle (can be enabled for debugging)
-    if (particle.isLarge && this.shouldDrawVelocityVector()) {
-      this.drawVelocityVector(particle);
-    }
 
     this.ctx.restore();
   }
 
-  private drawVelocityVector(particle: ElasticParticle) {
-    const velocityMagnitude = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
-
-    // Only draw if velocity is significant
-    if (velocityMagnitude < 0.5) return;
-
-    // Scale velocity for visibility (but keep it reasonable)
-    const scale = Math.min(20, 100 / velocityMagnitude);
-    const endX = particle.x + particle.vx * scale;
-    const endY = particle.y + particle.vy * scale;
-
-    this.ctx.save();
-    this.ctx.strokeStyle = "darkred";
-    this.ctx.lineWidth = 2;
-    this.ctx.setLineDash([2, 2]);
-
-    // Draw arrow line
-    this.ctx.beginPath();
-    this.ctx.moveTo(particle.x, particle.y);
-    this.ctx.lineTo(endX, endY);
-    this.ctx.stroke();
-
-    // Draw arrow head
-    const angle = Math.atan2(particle.vy, particle.vx);
-    const arrowLength = 5;
-
-    this.ctx.setLineDash([]);
-    this.ctx.beginPath();
-    this.ctx.moveTo(endX, endY);
-    this.ctx.lineTo(
-      endX - arrowLength * Math.cos(angle - Math.PI / 6),
-      endY - arrowLength * Math.sin(angle - Math.PI / 6)
-    );
-    this.ctx.moveTo(endX, endY);
-    this.ctx.lineTo(
-      endX - arrowLength * Math.cos(angle + Math.PI / 6),
-      endY - arrowLength * Math.sin(angle + Math.PI / 6)
-    );
-    this.ctx.stroke();
-
-    this.ctx.restore();
-  }
 
   private drawOriginMarker() {
     this.ctx.save();
@@ -161,80 +92,33 @@ export class Simulation {
     this.ctx.restore();
   }
 
-  private shouldDrawVelocityVector(): boolean {
-    // Can be controlled by a UI toggle or configuration
-    // For now, return false for clean visualization
-    return false;
-  }
 
-  // Method to enable/disable velocity vector drawing
-  public toggleVelocityVectors() {
-    // Implementation for UI control if needed
-  }
-
-  // Method to get canvas for external manipulation if needed
-  public getCanvas(): HTMLCanvasElement {
-    return this.canvas;
-  }
 
   // Method to update canvas visual size when world changes
-  public updateCanvasVisualSize(worldBounds: {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-  }) {
-    // Calculate dynamic canvas size that grows/shrinks with world but stays reasonable
+  public updateCanvasVisualSize(worldBounds: { minX: number; maxX: number; minY: number; maxY: number }) {
     const worldWidth = worldBounds.maxX - worldBounds.minX;
-    
-    // Only resize if world size actually changed significantly to prevent zoom flickering
     const currentWorldWidth = this.canvas.width / this.pixelsPerUnit;
-    if (Math.abs(worldWidth - currentWorldWidth) < worldWidth * 0.1) {
-      return; // Skip resize if change is less than 10%
-    }
     
-    // Calculate optimal canvas size based on world dimensions and screen constraints
-    const minCanvasSize = 400;
-    const maxCanvasSize = 800;
+    if (Math.abs(worldWidth - currentWorldWidth) < worldWidth * 0.1) return;
     
-    // Use a fixed pixel density that works well for visualization
-    const targetPixelsPerUnit = 1.5;
-    const idealCanvasSize = worldWidth * targetPixelsPerUnit;
-    const canvasSize = Math.max(minCanvasSize, Math.min(maxCanvasSize, idealCanvasSize));
-    
-    const optimalPixelsPerUnit = canvasSize / worldWidth;
-    
-    this.pixelsPerUnit = optimalPixelsPerUnit;
-    this.resizeCanvasForWorld(worldBounds, optimalPixelsPerUnit);
-    
-    console.log(`Canvas resized: world changed from ${currentWorldWidth.toFixed(1)} to ${worldWidth} units`);
+    const canvasSize = Math.max(400, Math.min(800, worldWidth * 1.5));
+    this.pixelsPerUnit = canvasSize / worldWidth;
+    this.resizeCanvasForWorld(worldBounds, this.pixelsPerUnit);
   }
 
-  // Method to get current canvas image data (for screenshots, etc.)
-  public getImageData(): ImageData {
-    return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-  }
 
-  // Resize canvas so that its pixel size is coordinated with world size
   public resizeCanvasForWorld(
     worldBounds: { minX: number; maxX: number; minY: number; maxY: number },
     pixelsPerUnit: number
   ) {
     const worldWidth = worldBounds.maxX - worldBounds.minX;
     const worldHeight = worldBounds.maxY - worldBounds.minY;
-
-    // Calculate actual canvas size based on world dimensions and scale
     const canvasWidth = worldWidth * pixelsPerUnit;
     const canvasHeight = worldHeight * pixelsPerUnit;
 
-    // Set canvas internal dimensions (affects rendering resolution)
     this.canvas.width = canvasWidth;
     this.canvas.height = canvasHeight;
-
-    // Set canvas visual dimensions (affects layout size)
     this.canvas.style.width = `${canvasWidth}px`;
     this.canvas.style.height = `${canvasHeight}px`;
-
-    console.log(`Canvas resized: ${canvasWidth}x${canvasHeight}px for world ${worldWidth}x${worldHeight} (pixelsPerUnit: ${pixelsPerUnit.toFixed(2)})`);
   }
 }

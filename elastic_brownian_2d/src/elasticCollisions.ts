@@ -1,46 +1,14 @@
 import { Model, Turtles } from "agentscript";
 import { ElasticParticle, CONFIG } from "./particleTypes";
 
-export interface SpatialGrid {
-  grid: Map<`${number},${number}`, ElasticParticle[]>;
-  size: number;
-}
-
-export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGrid {
-  const grid: SpatialGrid["grid"] = new Map();
-
+function getAllSmallParticles(turtles: Turtles): ElasticParticle[] {
+  const smallParticles: ElasticParticle[] = [];
   turtles.ask((turtle: ElasticParticle) => {
-    const cellX = Math.floor(turtle.x / cellSize);
-    const cellY = Math.floor(turtle.y / cellSize);
-    const key = `${cellX},${cellY}` as const;
-
-    if (!grid.has(key)) {
-      grid.set(key, []);
+    if (!turtle.isLarge) {
+      smallParticles.push(turtle);
     }
-    grid.get(key)!.push(turtle);
   });
-
-  return {
-    grid,
-    size: cellSize
-  };
-}
-
-function getNearbyParticles(x: number, y: number, { grid, size }: SpatialGrid): ElasticParticle[] {
-  const nearbyParticles: ElasticParticle[] = [];
-  const mainCellX = Math.floor(x / size);
-  const mainCellY = Math.floor(y / size);
-
-  for (let i = -1; i <= 1; i++) {
-    for (let j = -1; j <= 1; j++) {
-      const key = `${mainCellX + i},${mainCellY + j}` as const;
-      if (grid.has(key)) {
-        nearbyParticles.push(...grid.get(key)!);
-      }
-    }
-  }
-
-  return nearbyParticles;
+  return smallParticles;
 }
 
 export function performElasticCollision(
@@ -91,11 +59,8 @@ export function performElasticCollision(
     return false;
   }
 
-  // Calculate impulse scalar for elastic collision
-  // Formula: J = -(1 + e) * v_rel_n / (1/m1 + 1/m2) where e=1 for elastic
-  const restitution = 1.0; // perfectly elastic
-  const reducedMass = (particle1.mass * particle2.mass) / (particle1.mass + particle2.mass);
-  const impulse = -(1 + restitution) * speed * reducedMass;
+  // Simple elastic collision: exchange velocities proportionally to mass
+  const impulse = -2 * speed * particle1.mass * particle2.mass / (particle1.mass + particle2.mass);
 
   // Update velocities based on elastic collision physics
   particle1.vx += (impulse / particle1.mass) * nx;
@@ -103,25 +68,9 @@ export function performElasticCollision(
   particle2.vx -= (impulse / particle2.mass) * nx;
   particle2.vy -= (impulse / particle2.mass) * ny;
 
-  // Maintain constant speed for large particle after first collision
-  if (particle1.isLarge && particle1.lastCollisionTick < currentTick) {
-    const currentSpeed = Math.sqrt(particle1.vx * particle1.vx + particle1.vy * particle1.vy);
-    if (currentSpeed > 0) {
-      const targetSpeed = CONFIG.SMALL_PARTICLES.speed * 0.3; // proportional to small particle speed
-      const scale = targetSpeed / currentSpeed;
-      particle1.vx *= scale;
-      particle1.vy *= scale;
-    }
-  }
-  if (particle2.isLarge && particle2.lastCollisionTick < currentTick) {
-    const currentSpeed = Math.sqrt(particle2.vx * particle2.vx + particle2.vy * particle2.vy);
-    if (currentSpeed > 0) {
-      const targetSpeed = CONFIG.SMALL_PARTICLES.speed * 0.3; // proportional to small particle speed
-      const scale = targetSpeed / currentSpeed;
-      particle2.vx *= scale;
-      particle2.vy *= scale;
-    }
-  }
+  // Keep large particles at reasonable speed
+  limitParticleSpeed(particle1, currentTick);
+  limitParticleSpeed(particle2, currentTick);
 
   // Update collision tracking
   particle1.lastCollisionTick = currentTick;
@@ -130,120 +79,59 @@ export function performElasticCollision(
   return true;
 }
 
-export function moveSmallParticleWithRandomWalk(particle: ElasticParticle, world: Model["world"]) {
-  if (particle.isLarge) return;
-
-  // Add thermal motion following Maxwell-Boltzmann distribution
-  const thermalAngle = Math.random() * 2 * Math.PI;
-  // Proper thermal velocity: kT/m where kT is thermal energy
-  const thermalEnergy = 0.1; // thermal energy parameter
-  const thermalMagnitude = Math.sqrt(2 * thermalEnergy / particle.mass) * (Math.random() - 0.5);
-  particle.vx += thermalMagnitude * Math.cos(thermalAngle);
-  particle.vy += thermalMagnitude * Math.sin(thermalAngle);
-
-  // Maintain thermal equilibrium with proper energy conservation
-  const currentSpeed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
-  const targetSpeed = particle.speed;
-  
-  // Only limit if speed is excessively high to prevent numerical instability
-  if (currentSpeed > targetSpeed * 2.0) {
-    const scale = (targetSpeed * 2.0) / currentSpeed;
-    particle.vx *= scale;
-    particle.vy *= scale;
+function limitParticleSpeed(particle: ElasticParticle, currentTick: number) {
+  if (particle.isLarge && particle.lastCollisionTick < currentTick) {
+    const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+    if (speed > 0) {
+      const targetSpeed = CONFIG.SMALL_PARTICLES.speed * 0.3;
+      const scale = targetSpeed / speed;
+      particle.vx *= scale;
+      particle.vy *= scale;
+    }
   }
-  
-  // Maintain minimum thermal motion to prevent particles from becoming completely static
-  if (currentSpeed < targetSpeed * 0.1) {
-    const angle = Math.random() * 2 * Math.PI;
-    particle.vx += targetSpeed * 0.3 * Math.cos(angle);
-    particle.vy += targetSpeed * 0.3 * Math.sin(angle);
+}
+
+function handleBoundary(pos: number, vel: number, min: number, max: number): {pos: number, vel: number} {
+  if (pos > max) {
+    return { pos: max - (pos - max), vel: -Math.abs(vel) };
+  } else if (pos < min) {
+    return { pos: min + (min - pos), vel: Math.abs(vel) };
+  }
+  return { pos, vel };
+}
+
+export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
+  // Add random motion to small particles
+  if (!particle.isLarge) {
+    const randomAngle = Math.random() * 2 * Math.PI;
+    particle.vx += 0.1 * Math.cos(randomAngle);
+    particle.vy += 0.1 * Math.sin(randomAngle);
+    
+    // Keep small particles moving at target speed
+    const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+    if (speed > particle.speed * 2) {
+      particle.vx *= (particle.speed * 2) / speed;
+      particle.vy *= (particle.speed * 2) / speed;
+    }
   }
 
-  // Move based on velocity
+  // Move particle
   let newX = particle.x + particle.vx;
   let newY = particle.y + particle.vy;
 
-  // Handle boundary conditions with elastic reflection
-  if (newX > world.maxX) {
-    newX = world.maxX - (newX - world.maxX);
-    particle.vx = -Math.abs(particle.vx); // reverse x velocity
-  } else if (newX < world.minX) {
-    newX = world.minX + (world.minX - newX);
-    particle.vx = Math.abs(particle.vx);
-  }
-
-  if (newY > world.maxY) {
-    newY = world.maxY - (newY - world.maxY);
-    particle.vy = -Math.abs(particle.vy); // reverse y velocity
-  } else if (newY < world.minY) {
-    newY = world.minY + (world.minY - newY);
-    particle.vy = Math.abs(particle.vy);
-  }
-
-  particle.setxy(newX, newY);
-}
-
-export function moveLargeParticle(particle: ElasticParticle, world: Model["world"]) {
-  if (!particle.isLarge) return;
-
-  // Account for particle radius to prevent going through walls
+  // Handle boundaries
   const radius = particle.size;
-
-  // Limit velocity to prevent tunneling through boundaries
-  const maxStep = Math.min(world.maxX - world.minX, world.maxY - world.minY) / 10;
-  const currentStep = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
-  if (currentStep > maxStep) {
-    const scale = maxStep / currentStep;
-    particle.vx *= scale;
-    particle.vy *= scale;
-  }
-
-  // Move based on current velocity (from collisions)
-  let newX = particle.x + particle.vx;
-  let newY = particle.y + particle.vy;
-
-  // Handle boundary conditions with elastic reflection - robust approach
-  let hitBoundary = false;
-
-  // X boundaries - check both current and new position
-  if (newX + radius >= world.maxX) {
-    newX = world.maxX - radius - 0.1; // clamp with small buffer
-    particle.vx = -Math.abs(particle.vx); // ensure velocity points inward
-    hitBoundary = true;
-  } else if (newX - radius <= world.minX) {
-    newX = world.minX + radius + 0.1; // clamp with small buffer
-    particle.vx = Math.abs(particle.vx); // ensure velocity points inward
-    hitBoundary = true;
-  }
-
-  // Y boundaries - check both current and new position
-  if (newY + radius >= world.maxY) {
-    newY = world.maxY - radius - 0.1; // clamp with small buffer
-    particle.vy = -Math.abs(particle.vy); // ensure velocity points inward
-    hitBoundary = true;
-  } else if (newY - radius <= world.minY) {
-    newY = world.minY + radius + 0.1; // clamp with small buffer
-    particle.vy = Math.abs(particle.vy); // ensure velocity points inward
-    hitBoundary = true;
-  }
-
-  // Apply slight velocity damping when hitting boundaries to prevent infinite bouncing
-  if (hitBoundary) {
-    particle.vx *= 0.98;
-    particle.vy *= 0.98;
-  }
-
-  // Final safety check - ensure particle stays within bounds
-  newX = Math.max(world.minX + radius, Math.min(world.maxX - radius, newX));
-  newY = Math.max(world.minY + radius, Math.min(world.maxY - radius, newY));
-
-  particle.setxy(newX, newY);
+  const xResult = handleBoundary(newX, particle.vx, world.minX + radius, world.maxX - radius);
+  const yResult = handleBoundary(newY, particle.vy, world.minY + radius, world.maxY - radius);
+  
+  particle.vx = xResult.vel;
+  particle.vy = yResult.vel;
+  particle.setxy(xResult.pos, yResult.pos);
 }
+
 
 export function handleAllCollisions(turtles: Turtles, currentTick: number): number {
   let collisionCount = 0;
-  const grid = createSpatialGrid(turtles, CONFIG.LARGE_PARTICLE.radius * 3);
-
   let largeParticle: ElasticParticle | undefined;
 
   // Find the large particle
@@ -255,12 +143,9 @@ export function handleAllCollisions(turtles: Turtles, currentTick: number): numb
 
   if (!largeParticle) return 0;
 
-  // TypeScript now knows largeParticle is defined
-  const nearbyParticles = getNearbyParticles(largeParticle.x, largeParticle.y, grid);
-
-  for (const smallParticle of nearbyParticles) {
-    if (smallParticle === largeParticle || smallParticle.isLarge) continue;
-
+  // Check collisions with all small particles
+  const smallParticles = getAllSmallParticles(turtles);
+  for (const smallParticle of smallParticles) {
     if (performElasticCollision(smallParticle, largeParticle, currentTick)) {
       collisionCount++;
     }

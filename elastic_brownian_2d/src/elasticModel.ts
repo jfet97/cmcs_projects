@@ -1,10 +1,6 @@
 import { Model } from "agentscript";
 import { ElasticParticle, LargeParticleState, CONFIG } from "./particleTypes";
-import {
-  handleAllCollisions,
-  moveSmallParticleWithRandomWalk,
-  moveLargeParticle
-} from "./elasticCollisions";
+import { handleAllCollisions, moveParticle } from "./elasticCollisions";
 import { BrownianAnalysis } from "./brownianAnalysis";
 import { Simulation } from "./simulation";
 
@@ -104,11 +100,7 @@ export class ElasticModel extends Model {
 
     // Move particles
     this.turtles.ask((turtle: ElasticParticle) => {
-      if (turtle.isLarge) {
-        moveLargeParticle(turtle, this.world);
-      } else {
-        moveSmallParticleWithRandomWalk(turtle, this.world);
-      }
+      moveParticle(turtle, this.world);
     });
 
     // Handle all collisions and count them
@@ -134,16 +126,6 @@ export class ElasticModel extends Model {
     // Update analysis and visualization
     this.analysis.update(this.ticks);
 
-    // Check if MSD is becoming static and potentially reset reference
-    if (this.ticks > 500 && this.ticks % 200 === 0) {
-      const currentMSD = this.analysis.getCurrentMSD();
-      const msdSlope = this.analysis.getMSDSlope();
-
-      // If MSD is very small and slope is near zero, the particle might be stuck
-      if (currentMSD < 0.1 && Math.abs(msdSlope) < 0.001) {
-        console.log("Detected potential MSD calculation issue - very low displacement");
-      }
-    }
 
     this.simulation.drawParticles(this.world);
   }
@@ -185,9 +167,6 @@ export class ElasticModel extends Model {
     // Reset tick counter so everything restarts from zero
     this.ticks = 0;
 
-    console.log(
-      `Simulation reset. Large particle at (${this.largeParticle.x}, ${this.largeParticle.y})`
-    );
   }
 
   public updateParticleSpeed(newSpeed: number) {
@@ -212,68 +191,26 @@ export class ElasticModel extends Model {
   }
 
   public updateWorldSize(newSize: number, preserveParticleCount?: number, preserveSpeed?: number) {
-    console.log(`Updating world size to ${newSize} - FULL RESET`);
+    const currentParticleCount = preserveParticleCount || (this.turtles.length - 1);
+    const currentSpeed = preserveSpeed || this.getSmallParticleSpeed();
 
-    // Use preserved parameters from UI if provided, otherwise derive from current state
-    const currentParticleCount = preserveParticleCount !== undefined ? preserveParticleCount : (this.turtles.length - 1);
-    const currentSpeed = preserveSpeed !== undefined ? preserveSpeed : this.getSmallParticleSpeed(preserveSpeed);
-
-    // Update world boundaries
     this.world.minX = -newSize;
     this.world.maxX = newSize;
     this.world.minY = -newSize;
     this.world.maxY = newSize;
 
-    // Resize the canvas to match the new world size
     this.simulation.updateCanvasVisualSize(this.world);
-
-    // COMPLETE RESET: clear everything and start fresh
-    this.turtles.clear();
-
-    // Recreate large particle at center (fresh start)
-    this.setupLargeParticle();
-
-    // Recreate small particles with saved count and speed
-    this.setupSmallParticles(currentParticleCount);
-    this.updateParticleSpeed(currentSpeed);
-
-    // Reset state and analysis in correct sequence (same as resetSimulation)
-    // 1. First reset analysis to clear all accumulated data
-    this.analysis.reset();
-    
-    // 2. Update state with current particle position after setup
-    this.largeParticleState.x0 = this.largeParticle.x;
-    this.largeParticleState.y0 = this.largeParticle.y;
-    this.largeParticleState.positionHistory = [];
-    this.largeParticleState.collisionCount = 0;
-    this.largeParticleState.totalEnergyReceived = 0;
-    this.largeParticleState.lastCollisionTick = -1;
-    
-    // 3. Sync analysis reference position with state
-    this.analysis.updateReferencePosition();
-
-    // Also reset ticks to start fresh
-    this.ticks = 0;
-
-    console.log(
-      `World size updated to ${newSize}. Fresh simulation with ${currentParticleCount} particles at speed ${currentSpeed}`
-    );
-    console.log(
-      `Large particle reset to position: (${this.largeParticle.x}, ${this.largeParticle.y})`
-    );
+    this.resetSimulation(currentParticleCount, currentSpeed);
   }
 
-  private getSmallParticleSpeed(fallbackSpeed?: number): number {
-    // Try to get speed from existing small particles first
+  private getSmallParticleSpeed(): number {
     for (let i = 0; i < this.turtles.length; i++) {
       const turtle = this.turtles[i] as ElasticParticle;
       if (!turtle.isLarge) {
         return turtle.speed;
       }
     }
-    
-    // If no small particles exist, use fallback if provided, otherwise CONFIG default
-    return fallbackSpeed !== undefined ? fallbackSpeed : CONFIG.SMALL_PARTICLES.speed;
+    return CONFIG.SMALL_PARTICLES.speed;
   }
 
   public getStatistics() {
@@ -295,16 +232,4 @@ export class ElasticModel extends Model {
     };
   }
 
-  // Public getters to avoid 'as any' casts
-  public getWorld() {
-    return this.world;
-  }
-
-  public getSimulation() {
-    return this.simulation;
-  }
-
-  public getAnalysis() {
-    return this.analysis;
-  }
 }
