@@ -149,8 +149,8 @@ export function calculateDynamicExpectedValues(
 
 export const CONFIG = {
   LARGE_PARTICLE: {
-    mass: 20, // Moderate mass ratio 20:1 for observable Brownian motion
-    radius: 6, // Appropriate size for collision cross-section
+    mass: 30, // Increased mass ratio 30:1 for better Brownian motion visibility
+    radius: 8, // Slightly larger size for better visibility and collision cross-section
     initialPosition: { x: 0, y: 0 }, // center of the world
     color: "red"
   } as const,
