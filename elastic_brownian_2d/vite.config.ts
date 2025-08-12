@@ -2,21 +2,20 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: './src',
+  base: './',
   build: {
     outDir: '../dist',
     emptyOutDir: true
   },
   server: {
-    port: 3000,
+    port: 5124,
     strictPort: true,
-    hmr: {
-      port: 3001,
-    },
+    hmr: true,
     headers: {
-      'Cache-Control': 'no-store',
-    },
+      'Cache-Control': 'no-store'
+    }
   },
   optimizeDeps: {
-    force: true,
-  },
+    force: true
+  }
 });
