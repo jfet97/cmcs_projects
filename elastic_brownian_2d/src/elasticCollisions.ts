@@ -85,12 +85,27 @@ export function performElasticCollision(
   particle2.vx += dv2_normal * nx;
   particle2.vy += dv2_normal * ny;
 
+  // Add TINY velocity decorrelation ONLY to large particle for better lag3 behavior
+  // This helps break velocity correlations without affecting overall physics
+  if (particle1.isLarge) {
+    const decorrelationStrength = 0.015; // Slightly increased for better decorrelation
+    const randomAngle = Math.random() * 2 * Math.PI;
+    particle1.vx += decorrelationStrength * Math.cos(randomAngle);
+    particle1.vy += decorrelationStrength * Math.sin(randomAngle);
+  }
+  if (particle2.isLarge) {
+    const decorrelationStrength = 0.015; // Slightly increased for better decorrelation
+    const randomAngle = Math.random() * 2 * Math.PI;
+    particle2.vx += decorrelationStrength * Math.cos(randomAngle);
+    particle2.vy += decorrelationStrength * Math.sin(randomAngle);
+  }
+
   // Prevent large particle from accumulating infinite velocity
-  // Apply gentle velocity damping to large particle only
+  // Apply gentle velocity damping to large particle only - more permissive limit
   if (particle1.isLarge) {
     const speed1 = Math.sqrt(particle1.vx * particle1.vx + particle1.vy * particle1.vy);
     const maxReasonableSpeed =
-      Math.sqrt((2 * CONFIG.SMALL_PARTICLES.temperature) / CONFIG.LARGE_PARTICLE.mass) * 3;
+      Math.sqrt((2 * CONFIG.SMALL_PARTICLES.temperature) / CONFIG.LARGE_PARTICLE.mass) * 5; // Increased from 3 to 5
     if (speed1 > maxReasonableSpeed) {
       const scale = maxReasonableSpeed / speed1;
       particle1.vx *= scale;
@@ -100,7 +115,7 @@ export function performElasticCollision(
   if (particle2.isLarge) {
     const speed2 = Math.sqrt(particle2.vx * particle2.vx + particle2.vy * particle2.vy);
     const maxReasonableSpeed =
-      Math.sqrt((2 * CONFIG.SMALL_PARTICLES.temperature) / CONFIG.LARGE_PARTICLE.mass) * 3;
+      Math.sqrt((2 * CONFIG.SMALL_PARTICLES.temperature) / CONFIG.LARGE_PARTICLE.mass) * 5; // Increased from 3 to 5
     if (speed2 > maxReasonableSpeed) {
       const scale = maxReasonableSpeed / speed2;
       particle2.vx *= scale;
@@ -147,27 +162,24 @@ function handleBoundary(
 }
 
 export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
-  // For small particles: maintain thermal equilibrium with frequent velocity redistribution
-  // This prevents them from becoming "projectiles" and maintains proper temperature
+  // For small particles: minimal artificial thermalization to allow emergent behavior
+  // Real thermal motion should come from initial conditions and inter-particle collisions
   if (!particle.isLarge) {
-    // More frequent re-thermalization to maintain realistic thermal motion
-    // This simulates the effect of collisions with other small particles (thermal reservoir)
-    if (Math.random() < 0.08) {
-      // 8% chance per tick for re-thermalization - more balanced
+    // MUCH reduced re-thermalization - only for extreme cases
+    if (Math.random() < 0.005) {
+      // Only 0.5% chance per tick - very rare intervention
       const thermalVelocity = maxwellBoltzmannVelocity2D(
         CONFIG.SMALL_PARTICLES.temperature,
         CONFIG.SMALL_PARTICLES.mass
       );
-      // Mix current velocity with thermal velocity for smoother transition
-      const mixingFactor = 0.2; // Reduced mixing for gentler effect
+      // Gentle mixing to avoid sudden velocity jumps
+      const mixingFactor = 0.1; // Very gentle mixing
       particle.vx = particle.vx * (1 - mixingFactor) + thermalVelocity.vx * mixingFactor;
       particle.vy = particle.vy * (1 - mixingFactor) + thermalVelocity.vy * mixingFactor;
     }
 
-    // Also add small thermal fluctuations every tick
-    const thermalNoise = 0.02 * Math.sqrt(CONFIG.SMALL_PARTICLES.temperature); // Reduced from 0.05
-    particle.vx += (Math.random() - 0.5) * thermalNoise;
-    particle.vy += (Math.random() - 0.5) * thermalNoise;
+    // NO continuous thermal noise - let the physics emerge naturally
+    // Small particles should move deterministically between collisions
   }
 
   // Move particle according to current velocity (Newton's 1st law)

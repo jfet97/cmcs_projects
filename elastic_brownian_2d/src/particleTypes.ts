@@ -155,7 +155,7 @@ export const CONFIG = {
     color: "red"
   } as const,
   SMALL_PARTICLES: {
-    count: 2000, // Increased density for better Brownian motion
+    count: 1200, // Reduced from 2000 for better autocorrelation behavior
     mass: 1 as const,
     radius: 1.5 as const, // Slightly larger for better collision detection
     temperature: 0.5, // Lower temperature for gentler thermal motion
