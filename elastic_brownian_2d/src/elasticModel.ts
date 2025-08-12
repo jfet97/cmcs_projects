@@ -147,8 +147,8 @@ export class ElasticModel extends Model {
 
     // update velocity history for the large particle for autocorrelation analysis
     // Sample velocity less frequently for better autocorrelation measurement
-    if (this.ticks % 3 === 0) {
-      // Sample every 3 ticks instead of every tick
+    if (this.ticks % 10 === 0) {
+      // Sample every 10 ticks for even better decorrelation
       this.analysis.updateVelocityHistory(this.largeParticle.vx, this.largeParticle.vy, this.ticks);
     }
 
