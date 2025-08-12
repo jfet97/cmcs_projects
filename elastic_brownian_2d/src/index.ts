@@ -19,7 +19,6 @@ class ElasticBrownianApp {
     this.initializeUIState();
     this.initializeModel();
     this.setupEventListeners();
-    this.updateExpectedValues(); // initialize expected values on startup
     this.startSimulation();
   }
 
@@ -56,16 +55,9 @@ class ElasticBrownianApp {
 
     particleCountSlider?.addEventListener("input", e => {
       const count = parseInt((e.target as HTMLInputElement).value);
-
-      // TODO: update CONFIG (?)
       this.uiState.particleCount = count;
-
       this.updateElement("particle-count-value", count.toString());
-
-      // update expected values immediately when slider changes
-      this.updateExpectedValues();
-
-      // reset simulation with new particle count, preserving current temperature
+      // reset simulation with new particle count
       this.model.resetSimulation(count, this.uiState.particleTemperature);
     });
 
@@ -76,14 +68,8 @@ class ElasticBrownianApp {
 
     particleTemperatureSlider?.addEventListener("input", e => {
       const temperature = parseFloat((e.target as HTMLInputElement).value);
-
       this.uiState.particleTemperature = temperature;
-
       this.updateElement("particle-temperature-value", temperature.toFixed(1));
-
-      // update expected values immediately when slider changes
-      this.updateExpectedValues();
-
       this.model.updateParticleTemperature(temperature);
     });
 
@@ -92,16 +78,8 @@ class ElasticBrownianApp {
 
     worldSizeSlider?.addEventListener("input", e => {
       const size = parseInt((e.target as HTMLInputElement).value);
-
-      // TODO: update CONFIG (?)
       this.uiState.worldSize = size;
-
       this.updateElement("world-size-value", size.toString());
-
-      // update expected values immediately when slider changes
-      this.updateExpectedValues();
-
-      // TODO: CONFIG MUST BE UP TO DATE BEFORE CALLING THIS
       this.model.updateWorldSize(size);
     });
   }
@@ -138,55 +116,15 @@ class ElasticBrownianApp {
     const stats = this.model.getStatistics();
     const analysis = this.model.analysis.getAnalysisSummary();
 
-    // update DOM elements with statistics and analysis
+    // update DOM elements with basic statistics
     this.updateElement("ticks-value", stats.ticks.toString());
-    this.updateElement("msd-value", stats.msd.toFixed(2));
     this.updateElement("collision-count", stats.collisions.toString());
     this.updateElement("velocity-value", stats.velocity.toFixed(2));
-    this.updateElement("displacement-value", stats.displacement.toFixed(2));
-
-    // For emergent Brownian motion, theoretical values depend on collision dynamics
-    // Temperature determines thermal velocities via Maxwell-Boltzmann distribution
-    const expectedDiffusion = this.calculateExpectedDiffusion();
-    const expectedEquipartition =
-      (2 * this.uiState.particleTemperature) / CONFIG.LARGE_PARTICLE.mass;
-
-    // update physics diagnostics - compare measured vs theoretical values
-    this.updateElement("diffusion-coeff", analysis.diffusionCoeff.toFixed(3));
-    this.updateElement("theoretical-diffusion", expectedDiffusion.toFixed(3));
-    this.updateElement("equipartition-value", analysis.equipartition.toFixed(4));
-    this.updateElement("theoretical-equipartition", expectedEquipartition.toFixed(4));
     this.updateElement("velocity-decay-time", analysis.velocityDecayTime.toFixed(0));
-    this.updateElement("theoretical-decay-time", "N/A");
+    this.updateElement("velocity-data-points", analysis.velocityDataPoints.toString());
 
     // update Brownian motion indicator
     this.updateBrownianIndicator(analysis);
-  }
-
-  private updateExpectedValues() {
-    // calculate and update expected values based on current UI state
-    const expectedDiffusion = this.calculateExpectedDiffusion();
-    const expectedEquipartition =
-      (2 * this.uiState.particleTemperature) / CONFIG.LARGE_PARTICLE.mass;
-
-    // update the expected value displays immediately
-    this.updateElement("theoretical-diffusion", expectedDiffusion.toFixed(3));
-    this.updateElement("theoretical-equipartition", expectedEquipartition.toFixed(4));
-    this.updateElement("theoretical-decay-time", "N/A");
-  }
-
-  private calculateExpectedDiffusion(): number {
-    // Rough estimate based on kinetic theory for emergent Brownian motion
-    // D ~ kT/γ where γ depends on collision frequency and mass transfer
-    const collisionCrossSection =
-      Math.PI * (CONFIG.LARGE_PARTICLE.radius + CONFIG.SMALL_PARTICLES.radius) ** 2;
-    const density = this.uiState.particleCount / (4 * this.uiState.worldSize ** 2);
-    const thermalSpeed = Math.sqrt(2 * this.uiState.particleTemperature);
-    const collisionFreq = density * collisionCrossSection * thermalSpeed;
-    const effectiveGamma =
-      (collisionFreq * CONFIG.SMALL_PARTICLES.mass) / CONFIG.LARGE_PARTICLE.mass;
-
-    return Math.max(0.01, this.uiState.particleTemperature / Math.max(effectiveGamma, 1.0));
   }
 
   private updateElement(
@@ -209,17 +147,17 @@ class ElasticBrownianApp {
       indicator.classList.remove("positive", "negative");
 
       // need sufficient data for analysis
-      if (analysis.dataPoints < 30 || analysis.velocityDataPoints < 30) {
+      if (analysis.velocityDataPoints < 30 || analysis.autocorrelationDataPoints < 5) {
         indicator.textContent = "Initializing...";
         return;
       }
 
       // detection based only on velocity autocorrelation
-      if (analysis.isBrownianByAutocorrelation && analysis.autocorrelationDataPoints > 5) {
-        indicator.textContent = "Yes - Detected";
+      if (analysis.isBrownianByAutocorrelation) {
+        indicator.textContent = "✅ Brownian Motion";
         indicator.classList.add("positive");
       } else if (analysis.currentVelocity < 0.01) {
-        indicator.textContent = "No - Static";
+        indicator.textContent = "❌ Static";
         indicator.classList.add("negative");
       } else {
         // debug info for developing state
@@ -228,7 +166,7 @@ class ElasticBrownianApp {
           lag3 !== null
             ? `(lag3: ${lag3.toFixed(2)})`
             : `(${analysis.autocorrelationDataPoints} pts)`;
-        indicator.textContent = `Developing... ${debugInfo}`;
+        indicator.textContent = `🔄 Developing... ${debugInfo}`;
       }
     });
   }
@@ -236,20 +174,12 @@ class ElasticBrownianApp {
   private resetSimulation() {
     this.model.resetSimulation(this.uiState.particleCount, this.uiState.particleTemperature);
 
-    // TODO: canvas is broken, check
-    // Canvas size is already handled by resetSimulation() in the model
-
-    // reset UI elements
+    // reset UI elements - only essential ones
     this.updateElement("ticks-value", "0");
-    this.updateElement("msd-value", "0.00");
     this.updateElement("collision-count", "0");
     this.updateElement("velocity-value", "0.00");
-    this.updateElement("displacement-value", "0.00");
-
-    // reset physics diagnostics
-    this.updateElement("diffusion-coeff", "0.000");
-    this.updateElement("equipartition-value", "0.0000");
-    this.updateElement("velocity-decay-time", "0");
+    this.updateElement("velocity-decay-time", "N/A");
+    this.updateElement("velocity-data-points", "0");
 
     this.updateElement("brownian-indicator", "Initializing...", indicator => {
       indicator.classList.remove("positive", "negative");

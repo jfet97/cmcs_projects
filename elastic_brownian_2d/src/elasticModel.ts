@@ -125,30 +125,10 @@ export class ElasticModel extends Model {
     const collisionsThisTick = handleAllCollisions(this.turtles, this.ticks);
     this.largeParticleState.collisionCount += collisionsThisTick;
 
-    // NO ARTIFICIAL LANGEVIN DYNAMICS
-    // Brownian motion emerges naturally from elastic collisions with thermal bath
-    // The large particle moves purely according to Newton's laws between collisions
-
-    // update position history for the large particle for MSD calculation
-    if (this.ticks % CONFIG.ANALYSIS.msdUpdateInterval === 0) {
-      this.largeParticleState.positionHistory.push({
-        x: this.largeParticle.x,
-        y: this.largeParticle.y,
-        t: this.ticks
-      });
-
-      // limit history length for performance
-      if (this.largeParticleState.positionHistory.length > CONFIG.ANALYSIS.historyLength) {
-        this.largeParticleState.positionHistory = this.largeParticleState.positionHistory.slice(
-          -CONFIG.ANALYSIS.historyLength
-        );
-      }
-    }
-
-    // update velocity history for the large particle for autocorrelation analysis
+    // update velocity history for autocorrelation analysis
     // Sample velocity less frequently for better autocorrelation measurement
     if (this.ticks % 10 === 0) {
-      // Sample every 10 ticks for even better decorrelation
+      // Sample every 10 ticks for better decorrelation
       this.analysis.updateVelocityHistory(this.largeParticle.vx, this.largeParticle.vy, this.ticks);
     }
 
@@ -191,26 +171,11 @@ export class ElasticModel extends Model {
       this.updateParticleTemperature(preserveTemperature);
     }
 
-    // Update state with current particle position (preserve existing reference if particle was restored)
-    if (savedPosition) {
-      // If we restored a previous particle, keep the existing reference position for continuous MSD tracking
-      // Just update the current position in the state
-      this.largeParticleState.positionHistory = []; // Clear history but keep reference
-    } else {
-      // Fresh start - reset analysis and reference position
-      this.analysis.reset();
-      this.largeParticleState.x0 = this.largeParticle.x;
-      this.largeParticleState.y0 = this.largeParticle.y;
-      this.largeParticleState.positionHistory = [];
-      this.analysis.updateReferencePosition();
-    }
-
+    // Update state - simply reset analysis
+    this.analysis.reset();
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.totalEnergyReceived = 0;
     this.largeParticleState.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
-
-    // Canvas size should remain unchanged when just resetting particle count
-    // only resize canvas when world size actually changes (in updateWorldSize method)
 
     // reset tick counter so everything restarts from zero
     this.ticks = 0;
@@ -254,21 +219,12 @@ export class ElasticModel extends Model {
   }
 
   public getStatistics() {
-    const currentMSD = this.analysis.getCurrentMSD();
     const averageVelocity = Math.sqrt(this.largeParticle.vx ** 2 + this.largeParticle.vy ** 2);
-    const totalDisplacement = Math.sqrt(
-      (this.largeParticle.x - this.largeParticleState.x0) ** 2 +
-        (this.largeParticle.y - this.largeParticleState.y0) ** 2
-    );
 
-    // TODO: rename, check if this info is needed
     return {
       ticks: this.ticks,
-      msd: currentMSD,
       collisions: this.largeParticleState.collisionCount,
       velocity: averageVelocity,
-      displacement: totalDisplacement,
-      positionHistory: this.largeParticleState.positionHistory.length,
       smallParticleCount: this.turtles.length - 1 // exclude large particle
     };
   }

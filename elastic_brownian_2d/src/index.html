@@ -8,8 +8,8 @@
 </head>
 <body>
     <header>
-        <h1>🔬 Emergent Brownian Motion Simulation</h1>
-        <p><strong>PHYSICS CORRECTED:</strong> Pure emergent Brownian motion from elastic collisions with Maxwell-Boltzmann thermal bath</p>
+        <h1>🔬 Velocity Autocorrelation - Brownian Motion</h1>
+        <p><strong>SIMPLIFIED:</strong> Watch how the particle gradually "forgets" its direction of movement</p>
     </header>
 
     <main>
@@ -20,7 +20,6 @@
                     <div class="button-row">
                         <button id="reset-btn">Reset Simulation</button>
                         <button id="pause-btn">Pause</button>
-                        <button id="reset-msd-btn">Reset MSD</button>
                     </div>
                     <div class="controls-row">
                         <div class="particle-count-control">
@@ -44,72 +43,41 @@
 
             <div class="analysis-panel">
                 <div class="stats-section">
-                    <h3>Real-time Statistics</h3>
+                    <h3>📊 Essential Statistics</h3>
                     <div class="stats-grid">
                         <div class="stat-item">
                             <label>Time Steps:</label>
                             <span id="ticks-value">0</span>
                         </div>
                         <div class="stat-item">
-                            <label>Current MSD:</label>
-                            <span id="msd-value">0.00</span>
+                            <label>Particle Velocity:</label>
+                            <span id="velocity-value">0.00</span>
                         </div>
                         <div class="stat-item">
                             <label>Collisions:</label>
                             <span id="collision-count">0</span>
                         </div>
                         <div class="stat-item">
-                            <label>Large Particle Speed:</label>
-                            <span id="velocity-value">0.00</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Total Displacement:</label>
-                            <span id="displacement-value">0.00</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Brownian Motion:</label>
+                            <label>Is Brownian Motion?</label>
                             <span id="brownian-indicator">Initializing...</span>
                         </div>
-                    </div>
-                    
-                    <h4>⚛️ Physics Diagnostics</h4>
-                    <div class="stats-grid">
                         <div class="stat-item">
-                            <label>Diffusion Coeff (D):</label>
-                            <span id="diffusion-coeff">0.00</span>
+                            <label>Decay Time:</label>
+                            <span id="velocity-decay-time">N/A</span>
                         </div>
                         <div class="stat-item">
-                            <label>Expected D:</label>
-                            <span id="theoretical-diffusion">0.25</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Equipartition ⟨v²⟩:</label>
-                            <span id="equipartition-value">0.00</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Expected ⟨v²⟩:</label>
-                            <span id="theoretical-equipartition">0.033</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Velocity τ (ticks):</label>
-                            <span id="velocity-decay-time">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Expected τ:</label>
-                            <span id="theoretical-decay-time">16.7</span>
+                            <label>Velocity Data Points:</label>
+                            <span id="velocity-data-points">0</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="chart-section">
-                    <h3>Mean Squared Displacement</h3>
-                    <div class="chart-container">
-                        <canvas id="msd-chart"></canvas>
-                    </div>
-                </div>
-
-                <div class="chart-section">
-                    <h3>Velocity Autocorrelation</h3>
+                    <h3>🎯 Velocity Autocorrelation</h3>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                        <strong>What you see:</strong> The graph shows how much the particle "remembers" its direction. 
+                        In Brownian motion, this memory is lost quickly (the curve drops toward zero).
+                    </p>
                     <div class="chart-container">
                         <canvas id="velocity-chart"></canvas>
                     </div>
@@ -119,26 +87,27 @@
 
         <div class="info-panel">
             <details>
-                <summary>Simulation Details</summary>
+                <summary>🤔 What is Velocity Autocorrelation?</summary>
                 <div class="info-content">
-                    <h4>✅ CORRECTED Physics Model</h4>
+                    <h4>🎯 Simple Concept</h4>
+                    <p><strong>Velocity autocorrelation</strong> measures how long a particle "remembers" its direction of movement.</p>
+                    
+                    <h4>📊 How to Read the Graph</h4>
                     <ul>
-                        <li><strong>Large Particle:</strong> Mass = 30, Radius = 8, Pure Newtonian motion</li>
-                        <li><strong>Thermal Particles:</strong> 1200 particles, Mass = 1, Radius = 1.5, Maxwell-Boltzmann T=0.5</li>
-                        <li><strong>Collisions:</strong> Perfect elastic collisions with exact conservation laws</li>
-                        <li><strong>NO Langevin:</strong> Brownian motion emerges naturally from collisions</li>
-                        <li><strong>Boundary:</strong> Perfect elastic reflection (no randomness)</li>
-                    </ul>
-                    <h4>🎯 Theoretical Predictions</h4>
-                    <ul>
-                        <li><strong>Expected D:</strong> Estimated from collision frequency and mass transfer (D ~ kT/γ_eff)</li>
-                        <li><strong>Expected ⟨v²⟩:</strong> From equipartition theorem: ⟨v²⟩ = 2kT/M in 2D</li>
-                        <li><strong>Temperature Control:</strong> Maxwell-Boltzmann thermal bath at adjustable temperature</li>
-                        <li><strong>Mass Ratio:</strong> Optimized 20:1 ratio for observable Brownian emergence</li>
+                        <li><strong>Lag 0:</strong> Correlation is always 1 (perfect correlation with itself)</li>
+                        <li><strong>Lag 1, 2, 3...</strong> If the curve drops quickly toward zero, the particle "forgets" direction quickly → Brownian Motion!</li>
+                        <li><strong>Curve stays high:</strong> Particle maintains direction → Persistent movement (not Brownian)</li>
                     </ul>
 
-                    <h4>🔬 Expected Physical Behavior</h4>
-                    <p><strong>EMERGENT BROWNIAN MOTION:</strong> Large particle starts at rest. Thermal particles follow Maxwell-Boltzmann distribution and move deterministically between collisions. Perfect elastic collisions transfer momentum randomly due to thermal bombardment. The large particle exhibits true Brownian motion: linear MSD growth, velocity decorrelation, and statistical randomness emerging from deterministic physics.</p>
+                    <h4>🔬 Simulation</h4>
+                    <ul>
+                        <li><strong>Large Particle:</strong> The one we observe</li>
+                        <li><strong>Small Particles:</strong> The "thermal bath" that bombards the large particle</li>
+                        <li><strong>Elastic Collisions:</strong> Transfer momentum randomly</li>
+                    </ul>
+
+                    <h4>🎯 What to Expect</h4>
+                    <p><strong>EMERGENT BROWNIAN MOTION:</strong> Initially the particle is at rest. Thermal particles bombard it randomly. The large particle starts moving randomly, and velocity autocorrelation decays quickly, showing the loss of directional "memory" typical of Brownian motion.</p>
                 </div>
             </details>
         </div>
