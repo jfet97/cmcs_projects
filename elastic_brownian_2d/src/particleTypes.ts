@@ -42,7 +42,7 @@ export const CONFIG = {
     worldSize: 200, // it's x (-size, +size), y (-size, +size)
     timeStep: 1 as const, // simulation time unit
     collisionBuffer: 0.3 as const, // reduced buffer for more precise collisions
-    minCollisionInterval: 2 as const // reduced to allow more natural collision frequency
+    minCollisionInterval: 1 as const // minimum interval to prevent sticking
   },
   ANALYSIS: {
     msdUpdateInterval: 3, // more frequent MSD updates for smoother analysis

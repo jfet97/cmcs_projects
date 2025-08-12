@@ -21,7 +21,6 @@ function getLargeParticle(turtles: Turtles): ElasticParticle | undefined {
   return largeParticle;
 }
 
-// TODO: check logic
 export function performElasticCollision(
   particle1: ElasticParticle,
   particle2: ElasticParticle,
@@ -32,6 +31,7 @@ export function performElasticCollision(
   const distance = Math.sqrt(dx * dx + dy * dy);
   const minDistance = particle1.size + particle2.size;
 
+  // Only collide if particles are ACTUALLY touching or overlapping
   if (distance >= minDistance) {
     return false;
   }
@@ -44,63 +44,65 @@ export function performElasticCollision(
     return false;
   }
 
-  // separate overlapping particles first
-  const overlap = minDistance - distance + CONFIG.PHYSICS.collisionBuffer;
+  // Calculate collision normal (from particle1 to particle2)
+  const nx = dx / distance;
+  const ny = dy / distance;
+
+  // Relative velocity along collision normal
+  const relativeVelocityX = particle2.vx - particle1.vx;
+  const relativeVelocityY = particle2.vy - particle1.vy;
+  const relativeSpeed = relativeVelocityX * nx + relativeVelocityY * ny;
+
+  // Skip if particles are separating
+  if (relativeSpeed > 0) return false;
+
+  // Simple elastic collision formula
+  const totalMass = particle1.mass + particle2.mass;
+  const impulse = (2 * particle1.mass * particle2.mass * Math.abs(relativeSpeed)) / totalMass;
+
+  // Apply impulse: particle1 gets pushed back, particle2 gets pushed forward
+  particle1.vx -= (impulse / particle1.mass) * nx;
+  particle1.vy -= (impulse / particle1.mass) * ny;
+  particle2.vx += (impulse / particle2.mass) * nx;
+  particle2.vy += (impulse / particle2.mass) * ny;
+
+  // Separate overlapping particles AFTER velocity calculation with extra buffer
+  const overlap = minDistance - distance;
   if (overlap > 0) {
-    const separationX = (dx / distance) * (overlap / 2);
-    const separationY = (dy / distance) * (overlap / 2);
+    // Add small buffer to ensure complete separation
+    const totalSeparation = overlap + 0.1;
+    const separationX = (dx / distance) * (totalSeparation * 0.5);
+    const separationY = (dy / distance) * (totalSeparation * 0.5);
 
     particle1.setxy(particle1.x - separationX, particle1.y - separationY);
     particle2.setxy(particle2.x + separationX, particle2.y + separationY);
   }
 
-  // calculate collision normal (unit vector from particle1 to particle2)
-  const nx = dx / distance;
-  const ny = dy / distance;
-
-  // relative velocity
-  const rvx = particle2.vx - particle1.vx;
-  const rvy = particle2.vy - particle1.vy;
-
-  // relative velocity in collision normal direction
-  const speed = rvx * nx + rvy * ny;
-
-  // do not resolve if velocities are separating
-  if (speed > 0) {
-    return false;
+  // Apply reasonable speed limiting only to large particles
+  if (particle1.isLarge) {
+    const speed1 = Math.sqrt(particle1.vx * particle1.vx + particle1.vy * particle1.vy);
+    const maxSpeed = particle2.speed * 1.0; // Allow large particle to move at same speed as small particles
+    if (speed1 > maxSpeed) {
+      const scale = maxSpeed / speed1;
+      particle1.vx *= scale;
+      particle1.vy *= scale;
+    }
   }
-
-  // simple elastic collision: exchange velocities proportionally to mass
-  const impulse =
-    (-2 * speed * particle1.mass * particle2.mass) / (particle1.mass + particle2.mass);
-
-  // update velocities based on elastic collision physics
-  particle1.vx += (impulse / particle1.mass) * nx;
-  particle1.vy += (impulse / particle1.mass) * ny;
-  particle2.vx -= (impulse / particle2.mass) * nx;
-  particle2.vy -= (impulse / particle2.mass) * ny;
-
-  // keep large particles at reasonable speed
-  limitParticleSpeed(particle1, currentTick);
-  limitParticleSpeed(particle2, currentTick);
+  if (particle2.isLarge) {
+    const speed2 = Math.sqrt(particle2.vx * particle2.vx + particle2.vy * particle2.vy);
+    const maxSpeed = particle1.speed * 1.0; // Allow large particle to move at same speed as small particles
+    if (speed2 > maxSpeed) {
+      const scale = maxSpeed / speed2;
+      particle2.vx *= scale;
+      particle2.vy *= scale;
+    }
+  }
 
   // update collision tracking
   particle1.lastCollisionTick = currentTick;
   particle2.lastCollisionTick = currentTick;
 
   return true;
-}
-
-function limitParticleSpeed(particle: ElasticParticle, currentTick: number) {
-  if (particle.isLarge && particle.lastCollisionTick < currentTick) {
-    const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
-    if (speed > 0) {
-      const targetSpeed = CONFIG.SMALL_PARTICLES.speed * 0.3;
-      const scale = targetSpeed / speed;
-      particle.vx *= scale;
-      particle.vy *= scale;
-    }
-  }
 }
 
 function handleBoundary(
