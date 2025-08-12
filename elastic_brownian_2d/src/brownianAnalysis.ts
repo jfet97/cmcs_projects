@@ -60,7 +60,6 @@ export class BrownianAnalysis {
     });
   }
 
-
   public update(currentTick: number) {
     // Simple check: if particle hasn't moved much in a while, reset
     if (this.msdData.length > 100 && currentTick % 200 === 0) {
@@ -84,19 +83,17 @@ export class BrownianAnalysis {
     this.msdData.push(msd);
     this.timeData.push(currentTick);
 
-    // Keep only recent data for performance
+    // keep only recent data for performance
     if (this.msdData.length > 2000) {
       this.msdData = this.msdData.slice(-2000);
       this.timeData = this.timeData.slice(-2000);
     }
 
-    // Update chart data
+    // update chart data
     this.msdChart.data.labels = this.timeData;
     this.msdChart.data.datasets[0].data = this.msdData;
     this.msdChart.update("none");
-
   }
-
 
   public getCurrentMSD(): number {
     const dx = this.largeParticle.x - this.largeParticleState.x0;
@@ -106,15 +103,14 @@ export class BrownianAnalysis {
 
   public getMSDSlope(): number {
     if (this.msdData.length < 20) return 0;
-    
-    // Simple slope: compare current MSD to MSD from 100 steps ago
+
+    // just compare current MSD to MSD from 100 steps ago
     const recent = this.msdData[this.msdData.length - 1];
     const past = this.msdData[Math.max(0, this.msdData.length - 100)];
     const timeGap = Math.min(100, this.msdData.length - 1);
-    
+
     return timeGap > 0 ? (recent - past) / timeGap : 0;
   }
-
 
   public reset() {
     this.msdData = [];
@@ -125,6 +121,7 @@ export class BrownianAnalysis {
   }
 
   public updateReferencePosition() {
+    // store the initial state to then calculate MSD with respect to this position
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
   }
@@ -142,6 +139,7 @@ export class BrownianAnalysis {
     this.resetReferencePosition();
   }
 
+  // TODO: freca?
   public resizeCharts() {
     this.msdChart?.resize();
   }
@@ -151,8 +149,7 @@ export class BrownianAnalysis {
     return {
       currentMSD: this.getCurrentMSD(),
       msdSlope: slope,
-      dataPoints: this.msdData.length,
-      isBrownianMotion: slope > 0.01
+      dataPoints: this.msdData.length
     };
   }
 }

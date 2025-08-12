@@ -3,11 +3,10 @@ import { CONFIG } from "./particleTypes";
 
 class ElasticBrownianApp {
   private model!: ElasticModel;
-  private animationId = 0;
   private isPaused = false;
   private lastStatsUpdate = 0;
 
-  // UI State Management - maintain slider values independently from simulation state
+  // UI State Management
   private uiState = {
     particleCount: CONFIG.SMALL_PARTICLES.count,
     particleSpeed: CONFIG.SMALL_PARTICLES.speed,
