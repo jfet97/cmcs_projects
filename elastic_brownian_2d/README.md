@@ -1,6 +1,6 @@
 # Elastic Collision Brownian Motion Simulation
 
-A TypeScript-based physics simulation demonstrating **Brownian motion** through elastic collisions between thermal particles and a large particle. Built with AgentScript physics engine and real-time statistical analysis.
+A TypeScript-based physics simulation demonstrating **Brownian motion** through pure elastic collisions between thermal particles. Built with AgentScript physics engine and real-time velocity autocorrelation analysis.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-Physics_Simulation-blue?style=flat-square&logo=typescript)
 ![Build Status](https://img.shields.io/badge/Build-Vite-brightgreen?style=flat-square&logo=vite)
@@ -8,15 +8,15 @@ A TypeScript-based physics simulation demonstrating **Brownian motion** through 
 
 ## 🎯 Overview
 
-This simulation approximates Brownian motion with a hybrid approach:
-- **One large red particle** (mass = 50, radius = 12) at rest initially
-- **Many small blue particles** (default 2500, mass = 1, radius = 1) providing random bombardment
-- **Elastic collisions (pairwise large–small)** for momentum transfer
-- **Additional Langevin stochastic force** applied only to the large particle (fluctuation–dissipation)
-- **Artificial thermal kicks** on small particles to maintain agitation (not a full Maxwell–Boltzmann gas)
-- **Real-time analysis**: Mean Squared Displacement (MSD) + velocity autocorrelation
+This simulation demonstrates pure collision-driven Brownian motion:
+- **One large red particle** (mass = 30, radius = 8) starts completely at rest
+- **Many small blue particles** (default 1200, mass = 1, radius = 1.5) with Maxwell-Boltzmann thermal velocities
+- **Pure elastic collisions** between ALL particles (large-small AND small-small interactions)
+- **No artificial forces** - motion emerges entirely from elastic collision dynamics
+- **Real-time velocity autocorrelation analysis** for robust Brownian motion detection
+- **Velocity sampling every 10 ticks** for optimal autocorrelation measurement
 
-The simulation demonstrates how microscopic thermal motion creates observable macroscopic phenomena, validating Einstein's 1905 theory of Brownian motion.
+The simulation demonstrates how microscopic thermal motion creates observable macroscopic Brownian motion through pure physics, without artificial noise or stochastic forces.
 
 ## 🚀 Quick Start
 
@@ -62,30 +62,27 @@ pnpm lint:fix
 ### Particle System
 | Component | Mass | Radius | Color | Behavior |
 |-----------|------|--------|-------|----------|
-| **Large Particle** | 50 | 12 units | Red | Langevin + collisions |
-| **Small Particles** | 1 | 1 unit | Light Blue | Random kicks (approx thermal) |
+| **Large Particle** | 30 | 8 units | Red | Pure collision-driven motion |
+| **Small Particles** | 1 | 1.5 units | Light Blue | Maxwell-Boltzmann thermal motion |
 
-### Collision & Stochastic Mechanics
-- **Elastic collisions** between large particle and each small particle (O(N) per tick)
-- **Impulse-based update** conserving momentum & kinetic energy for the pair
-- **Light random scattering** added to break deterministic symmetry
-- **Langevin integration** for large particle: dv = -(γ/M) v dt + sqrt(2 γ kT / M²) sqrt(dt) ξ
-- **Boundary reflections** (elastic with slight randomization)
+### Pure Elastic Collision Physics
+- **All-pairs elastic collisions** between every particle pair (large-small AND small-small)
+- **Impulse-based momentum transfer** conserving energy and momentum
+- **Maxwell-Boltzmann velocity initialization** for realistic thermal distribution
+- **Boundary reflections** with elastic collision physics
+- **No artificial forces** - motion emerges purely from collision dynamics
 
 ### Physics Parameters
 ```typescript
 // Current defaults (see particleTypes.ts)
 CONFIG = {
-  LARGE_PARTICLE: { mass: 50, radius: 12, initialPosition: { x: 0, y: 0 } },
-  SMALL_PARTICLES: { count: 2500, mass: 1, radius: 1, speed: 0.5 },
-  PHYSICS: { worldSize: 200, timeStep: 1, collisionBuffer: 0.3, minCollisionInterval: 1 },
-  LANGEVIN: { gamma: 3.0, kT: 1.5, enabled: true },
-  ANALYSIS: { msdUpdateInterval: 3, historyLength: 15000, chartUpdateInterval: 8 }
+  LARGE_PARTICLE: { mass: 30, radius: 8, initialPosition: { x: 0, y: 0 } },
+  SMALL_PARTICLES: { count: 1200, mass: 1, radius: 1.5, temperature: 0.5 },
+  PHYSICS: { worldSize: 150, timeStep: 1, collisionBuffer: 0.2, minCollisionInterval: 1 },
+  LANGEVIN: { enabled: false }, // DISABLED - pure collision physics
+  ANALYSIS: { chartUpdateInterval: 5, historyLength: 20000 }
 };
-// Theoretical relations (2D):
-//   D = kT / γ
-//   ⟨v²⟩ = 2 kT / M
-//   τ_vel = M / γ
+// Pure collision-driven thermal particle simulation with high density
 ```
 
 ## 🏗️ Architecture
@@ -95,15 +92,17 @@ CONFIG = {
 #### 1. **ElasticModel** (`elasticModel.ts`)
 - Creates particles, advances dynamics (collision + Langevin), updates analysis
 
-#### 2. **ElasticCollisions** (`elasticCollisions.ts`)
-- Direct O(N) loop (only large vs each small). No spatial grid currently.
-- Elastic impulse + mild random rotation for decorrelation
+#### 2. **ElasticCollisions** (`elasticCollisions.ts`) - Pure Physics Engine
+- **All-pairs collision detection** (large-small AND small-small interactions)
+- **Elastic collision mathematics** with perfect energy and momentum conservation
+- **Maxwell-Boltzmann thermal initialization** for realistic thermal particle velocities
+- **Boundary handling** with elastic reflection physics
 
-#### 3. **BrownianAnalysis** (`brownianAnalysis.ts`) - Statistical Analysis
-- **MSD Calculation**: Real-time Mean Squared Displacement with slope analysis
-- **Velocity Autocorrelation**: Time-lagged correlation for memory loss detection
-- **Chart.js Integration**: Live visualization of statistical metrics
-- **Auto-Reset Logic**: Intelligent detection of stuck particles
+#### 3. **BrownianAnalysis** (`brownianAnalysis.ts`) - Velocity Autocorrelation Engine
+- **Velocity Autocorrelation**: Real-time calculation of time-lagged velocity correlations
+- **Brownian Motion Detection**: Memory loss detection through correlation decay
+- **Chart.js Integration**: Live visualization of autocorrelation curves
+- **Statistical Analysis**: Robust motion characterization for confined spaces
 
 #### 4. **Simulation** (`simulation.ts`) - Canvas Rendering
 - **Coordinate Transformation**: Bidirectional mapping between world space and screen space
@@ -129,11 +128,11 @@ ElasticModel (Main Simulation Controller)
 ├── Physics Step Loop
 └── Analysis Coordination
     ↓
-ElasticCollisions (Physics Engine)        BrownianAnalysis (Statistical Engine)
-├── Spatial Grid (O(n) detection)         ├── MSD Calculation & Slope Analysis
-├── Impulse-based Elastic Collisions      ├── Velocity Autocorrelation 
-├── Maxwell-Boltzmann Thermal Motion      ├── Chart.js Real-time Visualization
-└── Boundary Reflections                  └── Brownian Motion Detection
+ElasticCollisions (Pure Physics Engine)          BrownianAnalysis (Velocity Autocorrelation Engine)
+├── All-Pairs Collision Detection               ├── Real-time Velocity Autocorrelation
+├── Elastic Momentum & Energy Conservation      ├── Brownian Motion Detection via Memory Loss
+├── Maxwell-Boltzmann Thermal Distribution      ├── Chart.js Real-time Visualization
+└── Boundary Elastic Reflections               └── Statistical Motion Characterization
     ↓                                         ↓
 Simulation (Canvas Rendering System)
 ├── Coordinate Transformation (world ↔ screen)
@@ -150,40 +149,34 @@ Simulation (Canvas Rendering System)
 - **Reset MSD**: Clear displacement history for fresh analysis
 
 ### Parameter Adjustment  
-- **Small Particles**: 100-800 particles (slider control)
-- **Speed**: 1.0-8.0 thermal motion speed (affects collision frequency)
-- **Field Size**: 200-600 simulation boundary size
+- **Small Particles**: 100-800 particles (slider control) - default 1200
+- **Temperature**: 0.1-3.0 thermal energy (affects collision intensity) - default 0.5
+- **Field Size**: 200-600 simulation boundary size - default 150
 
 ### Live Statistics Dashboard
 - **Time Steps**: Current simulation tick count
-- **Current MSD**: Real-time mean squared displacement
-- **Collisions**: Total collision count with large particle
 - **Large Particle Speed**: Current velocity magnitude  
 - **Total Displacement**: Distance traveled from starting position
+- **Velocity Autocorrelation**: Real-time correlation decay measurement
 - **Brownian Motion Indicator**: Automatic detection status (Yes/No/Developing)
 
 ## 📈 Analysis & Visualization
 
-### Mean Squared Displacement (MSD)
-- MSD(t) = (x−x0)² + (y−y0)² collected every few ticks
-- Linear regime expected: MSD ≈ 4 D t in 2D (before confinement saturation)
-- Slope (last window) used to estimate D_est = slope / 4
+### Velocity Autocorrelation (Primary Analysis)
+- **C(τ) = ⟨v(t)·v(t+τ)⟩ / ⟨|v(t)||v(t+τ)|⟩** measuring velocity memory loss over time
+- **Brownian motion detection**: C(τ) decays to zero (memory loss indicates random motion)
+- **Superior to MSD**: Works effectively in confined spaces where MSD saturates
 
-### Velocity Autocorrelation
-- Implementation uses directional cosine correlation (angle decorrelation)
-- C_dir(τ) = mean[ cos θ(τ) ] where θ angle between v(t) and v(t+τ)
-- Faster to stabilize under confined geometry
-
-### Brownian Motion Detection Criteria (current heuristic)
-- Velocity directional correlation drops significantly by lag ≈ 3
-- MSD slope positive and within plausible diffusion range
-- Large particle not effectively static
+### Brownian Motion Detection Criteria
+- **Velocity decorrelation**: C(lag=3) < 0.7 indicates significant memory loss
+- **Real-time detection**: Analysis updates every simulation tick
+- **Robust in confinement**: Unlike MSD, autocorrelation remains effective at boundaries
 
 ### Real-Time Visualization
-- **Particle rendering** with physics-accurate sizes and colors
+- **Velocity autocorrelation chart** showing correlation decay over time lags
+- **Particle rendering** with physics-accurate sizes and thermal motion
 - **Coordinate transformation** between world physics space and screen pixels
-- **Dynamic canvas sizing** adapts to world size (400-800px constraints)
-- **Optional velocity vectors** for debugging particle motion
+- **Dynamic canvas sizing** adapts to world size for optimal visualization
 
 ## 🛠️ Technical Architecture
 
@@ -196,7 +189,7 @@ Simulation (Canvas Rendering System)
 
 ### Core Physics Implementation
 
-#### Elastic Collision Mathematics (Simplified Pairwise)
+#### Elastic Collision Mathematics (All Particle Pairs)
 ```typescript
 // Impulse formula: J = -(1 + e) * v_rel_n * μ  
 const reducedMass = (m1 * m2) / (m1 + m2);
@@ -207,29 +200,36 @@ particle1.vx += (impulse / particle1.mass) * normalX;
 particle2.vx -= (impulse / particle2.mass) * normalX;
 ```
 
-#### Langevin & Randomization
+#### Pure Thermal Motion Physics
 ```typescript
-// Large particle (Euler–Maruyama)
-v <- v * (1 - γ dt / M) + sqrt(2 γ kT dt / M²) * N(0,1)
+// Large particle starts completely at rest
+vx = 0; vy = 0;
 
-// Small particles (heuristic agitation)
-vx += intensity * cos(φ); vy += intensity * sin(φ);
-// plus occasional random reorientation & speed capping
+// Small particles initialized with Maxwell-Boltzmann distribution
+function maxwellBoltzmannVelocity2D(temperature, mass) {
+  const sigma = Math.sqrt(temperature / mass);
+  return { vx: gaussianRandom() * sigma, vy: gaussianRandom() * sigma };
+}
 ```
 
-#### Spatial Grid Optimization
+#### All-Pairs Collision Detection
 ```typescript
-// O(n) collision detection vs O(n²) brute force
-const grid = createSpatialGrid(turtles, cellSize);
-const nearbyParticles = getNearbyParticles(particle.x, particle.y, grid);
-// Only check particles in adjacent 3×3 cell neighborhood
+// Handle collisions between ALL particle pairs
+function handleAllCollisions(turtles, ticks) {
+  for (let i = 0; i < turtles.length; i++) {
+    for (let j = i + 1; j < turtles.length; j++) {
+      performElasticCollision(turtles[i], turtles[j], ticks);
+    }
+  }
+}
 ```
 
 ### Performance Features
-- **Spatial grid collision detection**: Reduces complexity from O(n²) to O(n)
-- **Throttled updates**: Charts every 8 ticks, statistics every 100ms
-- **Bounded history buffers**: 15,000 MSD points, 1,000 velocity samples
-- **Adaptive canvas sizing**: 400-800px with 1.5 px/unit optimal density
+- **All-pairs collision detection**: O(n²) complexity but optimized for ~1200 particles
+- **Throttled updates**: Charts every 5 ticks, statistics every 100ms
+- **Bounded history buffers**: 500 velocity points for autocorrelation analysis
+- **Velocity sampling**: Every 10 ticks for optimal decorrelation measurement
+- **Adaptive canvas sizing**: Automatic scaling based on world size
 
 ## 🧪 Configuration & Extension
 
@@ -239,18 +239,22 @@ Central parameters in `particleTypes.ts` (see code for authoritative values). Ad
 ### Statistical Analysis Extensions
 The `BrownianAnalysis` class can be extended for additional metrics:
 ```typescript
-// Example: Add diffusion coefficient calculation
-public calculateDiffusionCoefficient(): number {
-  const msdSlope = this.getMSDSlope();
-  return msdSlope / 4; // D = slope/4 for 2D diffusion
+// Example: Add diffusion coefficient estimation from autocorrelation
+public calculateVelocityDecayTime(): number {
+  // Find characteristic decay time from autocorrelation curve
+  for (let i = 0; i < this.autocorrelations.length; i++) {
+    if (this.autocorrelations[i] < 1/Math.E) { // 1/e decay
+      return i; // Return decay time in simulation ticks
+    }
+  }
+  return this.autocorrelations.length;
 }
 
-// Example: Add Einstein relation validation  
-public validateEinsteinRelation(): boolean {
-  const D = this.calculateDiffusionCoefficient();
-  const kT = 0.1; // Thermal energy
-  const expectedD = kT / (6 * Math.PI * viscosity * radius);
-  return Math.abs(D - expectedD) < tolerance;
+// Example: Add thermal equilibrium validation
+public checkThermalEquilibrium(): boolean {
+  const avgKineticEnergy = this.calculateAverageKineticEnergy();
+  const expectedThermalEnergy = 0.5 * CONFIG.SMALL_PARTICLES.temperature; // kT/2 per DOF
+  return Math.abs(avgKineticEnergy - expectedThermalEnergy) < 0.1;
 }
 ```
 

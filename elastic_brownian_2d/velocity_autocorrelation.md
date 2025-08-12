@@ -1,81 +1,107 @@
-# Velocity Autocorrelation per Brownian Motion Detection
+# Velocity Autocorrelation for Brownian Motion Detection
 
-## Perché è meglio di MSD in spazi confinati
+## Why Superior to MSD in Confined Spaces
 
-- **MSD si satura** nei confini → pendenza → 0 anche se è Browniano
-- **Velocity autocorrelation funziona sempre** → decade anche in spazi confinati
+- **MSD saturates** at boundaries → slope → 0 even for Brownian motion
+- **Velocity autocorrelation always works** → decays even in confined spaces
 
-## Formula (classica vs implementazione)
+## Formula (Classical vs Implementation)
 
-Classica (modulo completo):
+Classical (full magnitude correlation):
 ```
 C(τ) = ⟨ v(t) · v(t+τ) ⟩ / ⟨ v(t) · v(t) ⟩
 ```
-Implementata (solo direzione, più robusta quando il modulo fluttua molto):
+
+Implemented (directional only, more robust when magnitude fluctuates):
 ```
 C_dir(τ) = ⟨ cos θ(t, t+τ) ⟩ = ⟨ v(t)·v(t+τ) / (|v(t)| |v(t+τ)|) ⟩
 ```
 
-## Implementazione pratica (versione direzionale)
+## Practical Implementation (Directional Version)
 
 ```typescript
-// 1. Salva storia velocità
-velocityHistory = [{vx, vy, time}, ...]
+// 1. Save velocity history (sampled every 10 ticks for optimal decorrelation)
+if (this.ticks % 10 === 0) {
+  this.analysis.updateVelocityHistory(this.largeParticle.vx, this.largeParticle.vy, this.ticks);
+}
 
-// 2. Per ogni lag τ
+// 2. Keep last 500 points for performance
+if (this.velocityHistory.length > 500) {
+  this.velocityHistory = this.velocityHistory.slice(-500);
+}
+
+// 3. Calculate cosine of angle (direction correlation) for each lag τ
 for (let lag = 0; lag < maxLag; lag++) {
   let sum = 0, count = 0
   
-  // 3. Calcola coseno angolo (direzione)
   for (let i = 0; i < history.length - lag; i++) {
     const v1 = history[i]
     const v2 = history[i+lag]
-    const m1 = Math.hypot(v1.vx, v1.vy)
-    const m2 = Math.hypot(v2.vx, v2.vy)
+    const m1 = Math.sqrt(v1.vx * v1.vx + v1.vy * v1.vy)
+    const m2 = Math.sqrt(v2.vx * v2.vx + v2.vy * v2.vy)
+    
     if (m1 > 1e-6 && m2 > 1e-6) {
       const dot = v1.vx * v2.vx + v1.vy * v2.vy
-      sum += dot / (m1 * m2)
+      sum += dot / (m1 * m2)  // Normalized dot product = cos(angle)
       count++
     }
   }
   
-  autocorr[lag] = sum / count
+  autocorr[lag] = count > 0 ? sum / count : 0
 }
 
-// 4. Nessuna normalizzazione necessaria: C_dir(0) ≈ 1 già per definizione
+// 4. No normalization needed: C_dir(0) ≈ 1 by definition
 ```
 
-## Criterio Browniano (heuristico attuale)
+## Brownian Motion Detection Criteria
 
-- **Browniano**: C_dir(3) < ~0.7 e decrescente
-- **Non-Browniano**: C_dir rimane alta (≈1) diversi lag oppure aumenta
-- **Rumore/Transizione**: fluttuazioni senza trend chiaro (servono più dati)
+### Current Implementation
+- **Brownian**: C_dir(3) < 0.7 (significant memory loss by lag 3)
+- **Non-Brownian**: C_dir remains high (≈1) for several lags or increases
+- **Transitional**: Fluctuations without clear trend (need more data)
 
-## Soglie pratiche alternative
+### Alternative Thresholds
 ```typescript
-// Variante più severa (quando c'è abbastanza agitazione):
+// Stricter criterion (when sufficient thermal agitation):
 const isBrownianStrict = autocorr[5] < 0.4
 
-// Variante soft (fase iniziale):
+// Softer criterion (early phase or low energy):
 const isBrownianEarly = autocorr[3] < 0.7
 ```
 
-## Dove implementare
+## Implementation Details
 
-Aggiungi in `brownianAnalysis.ts` accanto al calcolo MSD esistente.
+### 1. Velocity Tracking
+- `elasticModel.ts`: Updates every 10 ticks (not every tick) for better decorrelation resolution
+- Buffer limited to 500 points for memory efficiency and performance
+- Requires minimum 30 points before calculation begins
 
-## Implementazione realizzata
+### 2. Real-time Chart
+- Updates every 5 ticks (CONFIG.ANALYSIS.chartUpdateInterval)
+- No explicit normalization needed (values already between -1 and 1)
+- Y-axis scale: [-0.5, 1.0] for optimal visualization
 
-### 1. Tracking velocità
-- `elasticModel.ts`: aggiornamento ogni tick (non solo ogni msdUpdateInterval) per risoluzione migliore
-- Buffer limitato a 500 punti
+### 3. Brownian Motion Detection
+- Method `isBrownianByAutocorrelation()` checks C_dir(lag=3)
+- Current threshold: < 0.7 for velocity memory loss
+- Used as primary detection method (no MSD needed)
 
-### 2. Chart real-time  
-- Aggiornamento ogni `chartUpdateInterval`
-- Nessuna normalizzazione esplicita (valore già tra -1 e 1)
-- Scala Y scelta: [-0.5, 1.0]
+### 4. Performance Optimizations
+- Maximum lag limited to min(25, historyLength/4) for computational efficiency
+- Skip calculation if velocity magnitude < 1e-6 (numerical stability)
+- Chart updates throttled to maintain 60 FPS rendering
 
-### 3. Detection Browniano
-- Metodo `isBrownianByAutocorrelation()` controlla C_dir(lag=3)
-- Soglia corrente: < 0.7
-- Combinato con test su MSD per valutazione finale
+## Scientific Foundation
+
+### Physical Interpretation
+- **C(0) = 1**: Perfect correlation at zero lag (particle with itself)
+- **C(τ) → 0**: Memory loss indicates random thermal bombardment
+- **C(τ) ≈ 1**: Persistent motion indicates ballistic or systematic forces
+- **Decay time τ**: Time scale for velocity decorrelation (~ M/γ in theory)
+
+### Advantages Over MSD
+1. **Boundary independence**: Works in any confinement geometry
+2. **Fast convergence**: Detects Brownian motion within seconds
+3. **Physical insight**: Directly measures fundamental Brownian property
+4. **Numerical stability**: Less sensitive to reference position drift
+5. **Real-time capable**: Immediate feedback for interactive exploration
