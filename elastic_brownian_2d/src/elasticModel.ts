@@ -24,7 +24,7 @@ export class ElasticModel extends Model {
   }
 
   private setupLargeParticle() {
-    // Create single large particle at center
+    // a single large particle at center
     this.turtles.create(1, (turtle: ElasticParticle) => {
       turtle.setxy(
         CONFIG.LARGE_PARTICLE.initialPosition.x,
@@ -37,36 +37,43 @@ export class ElasticModel extends Model {
       turtle.isLarge = true;
       turtle.vx = 0;
       turtle.vy = 0;
-      turtle.stepSize = 0; // Large particle doesn't do random walk
+      turtle.stepSize = 0; // large particle doesn't do random walk autonomously
       turtle.speed = 0;
       turtle.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
 
       this.largeParticle = turtle;
     });
 
-    // Initialize large particle state tracking
+    // TODO (a che serve ?)
+    // init large particle state tracking
     this.largeParticleState = {
       x0: this.largeParticle.x,
       y0: this.largeParticle.y,
       positionHistory: [],
       collisionCount: 0,
       totalEnergyReceived: 0,
-      lastCollisionTick: -1
+      lastCollisionTick: -CONFIG.PHYSICS.minCollisionInterval
     };
   }
 
   private setupSmallParticles(particleCount?: number) {
+    // a lot of small particles around the large particle
+
+    // TODO: use only the updated config
     const count = particleCount || CONFIG.SMALL_PARTICLES.count;
+
     this.turtles.create(count, (turtle: ElasticParticle) => {
-      // Random position avoiding the large particle - use world boundaries consistently
+      // random position avoiding the large particle - use world boundaries consistently
+      // keep initial distance from large particle
       const worldWidth = this.world.maxX - this.world.minX;
       const worldHeight = this.world.maxY - this.world.minY;
+
       let x, y, distance;
       do {
         x = (Math.random() - 0.5) * worldWidth * 0.8;
         y = (Math.random() - 0.5) * worldHeight * 0.8;
         distance = Math.sqrt(x * x + y * y);
-      } while (distance < CONFIG.LARGE_PARTICLE.radius * 3); // Keep initial distance from large particle
+      } while (distance < CONFIG.LARGE_PARTICLE.radius * 3);
 
       turtle.setxy(x, y);
       turtle.mass = CONFIG.SMALL_PARTICLES.mass;
@@ -75,7 +82,8 @@ export class ElasticModel extends Model {
       turtle.shape = "circle";
       turtle.isLarge = false;
 
-      // Initial random velocity for thermal motion
+      // initial random velocity for thermal motion
+      // TODO: check che diamine è sto thermal motion, documenta anche nel readme
       const angle = Math.random() * 2 * Math.PI;
       turtle.vx = CONFIG.SMALL_PARTICLES.speed * Math.cos(angle);
       turtle.vy = CONFIG.SMALL_PARTICLES.speed * Math.sin(angle);
@@ -98,16 +106,16 @@ export class ElasticModel extends Model {
       return;
     }
 
-    // Move particles
+    // move particles
     this.turtles.ask((turtle: ElasticParticle) => {
       moveParticle(turtle, this.world);
     });
 
-    // Handle all collisions and count them
+    // handle all collisions and count them
     const collisionsThisTick = handleAllCollisions(this.turtles, this.ticks);
     this.largeParticleState.collisionCount += collisionsThisTick;
 
-    // Update position history for the large particle
+    // update position history for the large particle for MSD calculation
     if (this.ticks % CONFIG.ANALYSIS.msdUpdateInterval === 0) {
       this.largeParticleState.positionHistory.push({
         x: this.largeParticle.x,
@@ -115,7 +123,7 @@ export class ElasticModel extends Model {
         t: this.ticks
       });
 
-      // Limit history length for performance
+      // limit history length for performance
       if (this.largeParticleState.positionHistory.length > CONFIG.ANALYSIS.historyLength) {
         this.largeParticleState.positionHistory = this.largeParticleState.positionHistory.slice(
           -CONFIG.ANALYSIS.historyLength
@@ -123,64 +131,68 @@ export class ElasticModel extends Model {
       }
     }
 
-    // Update analysis and visualization
+    // update analysis
     this.analysis.update(this.ticks);
 
-
+    // update visualization
     this.simulation.drawParticles(this.world);
   }
 
-  // Public methods for external control
+  // public methods for external control
   public resetSimulation(newParticleCount?: number, preserveSpeed?: number) {
-    // Clear all turtles except the large particle
+    // clear all turtles except the large particle
     this.turtles.clear();
 
-    // Recreate large particle
+    // create large particle
     this.setupLargeParticle();
 
-    // Create small particles with new count if provided
+    // create small particles with new count if provided
     this.setupSmallParticles(newParticleCount);
-    
-    // Apply preserved speed if provided
+
+    // apply preserved speed if provided
     if (preserveSpeed !== undefined) {
       this.updateParticleSpeed(preserveSpeed);
     }
 
+    // TODO: check, simplify
     // Reset state and analysis in correct sequence to prevent inconsistencies
-    // 1. First reset analysis to clear all accumulated data
+    // 1. reset analysis to clear all accumulated data
     this.analysis.reset();
-    
-    // 2. Update state with current particle position  
+
+    // 2. update large particle state with current particle position
     this.largeParticleState.x0 = this.largeParticle.x;
     this.largeParticleState.y0 = this.largeParticle.y;
     this.largeParticleState.positionHistory = [];
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.totalEnergyReceived = 0;
-    this.largeParticleState.lastCollisionTick = -1;
-    
-    // 3. Sync analysis reference position with state (must be after state reset)
+    this.largeParticleState.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
+
+    // 3. sync analysis reference position with state (must be after state reset)
     this.analysis.updateReferencePosition();
 
     // Canvas size should remain unchanged when just resetting particle count
-    // Only resize canvas when world size actually changes (in updateWorldSize method)
+    // only resize canvas when world size actually changes (in updateWorldSize method)
 
-    // Reset tick counter so everything restarts from zero
+    // reset tick counter so everything restarts from zero
     this.ticks = 0;
-
   }
 
   public updateParticleSpeed(newSpeed: number) {
-    // Update speed for all small particles
+    // update speed for all small particles
     this.turtles.ask((turtle: ElasticParticle) => {
       if (!turtle.isLarge) {
-        // Normalize current velocity and apply new speed
+        // normalize current velocity
         const currentSpeed = Math.sqrt(turtle.vx * turtle.vx + turtle.vy * turtle.vy);
+
+        // scale wrt new speed
+        // TODO: check why this is necessary, why do not apply new speed directly?
+        //       the old speed is in turtle.speed
         if (currentSpeed > 0) {
           const scale = newSpeed / currentSpeed;
           turtle.vx *= scale;
           turtle.vy *= scale;
         } else {
-          // If particle is stationary, give it a random velocity
+          // if particle were stationary, give it a random velocity
           const angle = Math.random() * 2 * Math.PI;
           turtle.vx = newSpeed * Math.cos(angle);
           turtle.vy = newSpeed * Math.sin(angle);
@@ -190,9 +202,11 @@ export class ElasticModel extends Model {
     });
   }
 
-  public updateWorldSize(newSize: number, preserveParticleCount?: number, preserveSpeed?: number) {
-    const currentParticleCount = preserveParticleCount || (this.turtles.length - 1);
-    const currentSpeed = preserveSpeed || this.getSmallParticleSpeed();
+  public updateWorldSize(newSize: number) {
+    // exclude large particle
+    // TODO: particle speed and count should come from up to date CONFIG
+    const currentParticleCount = this.turtles.length - 1;
+    const currentSpeed = this.getSmallParticleSpeed();
 
     this.world.minX = -newSize;
     this.world.maxX = newSize;
@@ -204,8 +218,9 @@ export class ElasticModel extends Model {
   }
 
   private getSmallParticleSpeed(): number {
+    // TODO: config should be up to date
     for (let i = 0; i < this.turtles.length; i++) {
-      const turtle = this.turtles[i] as ElasticParticle;
+      const turtle = (this.turtles.toArray() as ElasticParticle[])[i];
       if (!turtle.isLarge) {
         return turtle.speed;
       }
@@ -221,6 +236,7 @@ export class ElasticModel extends Model {
         (this.largeParticle.y - this.largeParticleState.y0) ** 2
     );
 
+    // TODO: rename, check if this info is needed
     return {
       ticks: this.ticks,
       msd: currentMSD,
@@ -231,5 +247,4 @@ export class ElasticModel extends Model {
       smallParticleCount: this.turtles.length - 1 // exclude large particle
     };
   }
-
 }

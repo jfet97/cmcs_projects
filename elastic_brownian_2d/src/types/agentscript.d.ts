@@ -6,6 +6,7 @@ declare module 'agentscript' {
 
   // Definiamo la forma di una collezione di turtles
   export interface Turtles {
+    toArray(): unknown;
     create(count: number, callback?: (turtle: any) => void): void;
     ask(callback: (turtle: any, i: number) => void): void;
     clear(): void;
