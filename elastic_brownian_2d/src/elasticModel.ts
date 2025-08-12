@@ -98,7 +98,7 @@ export class ElasticModel extends Model {
   }
 
   private initializeVisualization() {
-    this.simulation = new Simulation(this.turtles, this.largeParticle);
+    this.simulation = new Simulation(this.turtles, this.largeParticle, this.world);
   }
 
   override step() {
@@ -135,7 +135,7 @@ export class ElasticModel extends Model {
     this.analysis.update(this.ticks);
 
     // update visualization
-    this.simulation.drawParticles(this.world);
+    this.simulation.drawParticles();
   }
 
   // public methods for external control

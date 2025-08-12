@@ -16,12 +16,17 @@ export class BrownianAnalysis {
   }
 
   private initializeMSDChart() {
-    const ctx = document.getElementById("msd-chart") as HTMLCanvasElement;
-    if (!ctx) {
+    const msdc = document.getElementById("msd-chart") as HTMLCanvasElement;
+    if (!msdc) {
       throw new Error("Cannot find MSD chart canvas");
     }
 
-    this.msdChart = new Chart(ctx.getContext("2d")!, {
+    const ctx = msdc.getContext("2d");
+    if (!ctx) {
+      throw new Error("Cannot get MSD chart context");
+    }
+
+    this.msdChart = new Chart(ctx, {
       type: "line",
       data: {
         labels: [],

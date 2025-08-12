@@ -60,7 +60,8 @@ export function performElasticCollision(
   }
 
   // Simple elastic collision: exchange velocities proportionally to mass
-  const impulse = -2 * speed * particle1.mass * particle2.mass / (particle1.mass + particle2.mass);
+  const impulse =
+    (-2 * speed * particle1.mass * particle2.mass) / (particle1.mass + particle2.mass);
 
   // Update velocities based on elastic collision physics
   particle1.vx += (impulse / particle1.mass) * nx;
@@ -91,7 +92,12 @@ function limitParticleSpeed(particle: ElasticParticle, currentTick: number) {
   }
 }
 
-function handleBoundary(pos: number, vel: number, min: number, max: number): {pos: number, vel: number} {
+function handleBoundary(
+  pos: number,
+  vel: number,
+  min: number,
+  max: number
+): { pos: number; vel: number } {
   if (pos > max) {
     return { pos: max - (pos - max), vel: -Math.abs(vel) };
   } else if (pos < min) {
@@ -106,7 +112,7 @@ export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
     const randomAngle = Math.random() * 2 * Math.PI;
     particle.vx += 0.1 * Math.cos(randomAngle);
     particle.vy += 0.1 * Math.sin(randomAngle);
-    
+
     // Keep small particles moving at target speed
     const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
     if (speed > particle.speed * 2) {
@@ -116,19 +122,18 @@ export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
   }
 
   // Move particle
-  let newX = particle.x + particle.vx;
-  let newY = particle.y + particle.vy;
+  const newX = particle.x + particle.vx;
+  const newY = particle.y + particle.vy;
 
   // Handle boundaries
   const radius = particle.size;
   const xResult = handleBoundary(newX, particle.vx, world.minX + radius, world.maxX - radius);
   const yResult = handleBoundary(newY, particle.vy, world.minY + radius, world.maxY - radius);
-  
+
   particle.vx = xResult.vel;
   particle.vy = yResult.vel;
   particle.setxy(xResult.pos, yResult.pos);
 }
-
 
 export function handleAllCollisions(turtles: Turtles, currentTick: number): number {
   let collisionCount = 0;
