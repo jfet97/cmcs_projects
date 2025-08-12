@@ -5,6 +5,8 @@ export class Simulation {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private animationId = 0;
+  private pixelsPerUnit = 1; // higher resolution scaling
+  private devicePixelRatio = window.devicePixelRatio || 1;
 
   constructor(
     private turtles: Turtles,
@@ -31,25 +33,60 @@ export class Simulation {
     }
     this.ctx = ctx;
 
+    this.setupCanvasDimensions(worldBounds);
+
+    // visual styles
+    this.canvas.style.border = "1px solid #ccc";
+    this.canvas.style.background = "white";
+  }
+
+  private setupCanvasDimensions(worldBounds: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  }) {
     const worldWidth = worldBounds.maxX - worldBounds.minX;
     const worldHeight = worldBounds.maxY - worldBounds.minY;
 
-    this.canvas.width = worldWidth;
-    this.canvas.height = worldHeight;
-    this.canvas.style.width = `${worldWidth}px`;
-    this.canvas.style.height = `${worldHeight}px`;
+    // calculate display size (what user sees in CSS)
+    const displayWidth = worldWidth;
+    const displayHeight = worldHeight;
 
-    // visual styles only (size is set by resizeCanvasForWorld)
-    this.canvas.style.border = "1px solid #ccc";
-    this.canvas.style.background = "white";
+    // set canvas buffer dimensions (actual resolution)
+    this.canvas.width = displayWidth * this.devicePixelRatio;
+    this.canvas.height = displayHeight * this.devicePixelRatio;
+
+    // set canvas display dimensions (visual size in CSS)
+    this.canvas.style.width = `${displayWidth}px`;
+    this.canvas.style.height = `${displayHeight}px`;
+
+    // update pixelsPerUnit to account for devicePixelRatio in rendering
+    this.pixelsPerUnit = this.devicePixelRatio;
+
+    console.log({
+      pixelsPerUnit: this.pixelsPerUnit,
+      canvasWidth: this.canvas.width,
+      canvasHeight: this.canvas.height
+    });
   }
 
   public drawParticles() {
     if (!this.canvas || !this.ctx) return;
 
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // clear entire canvas in actual pixel coordinates
     this.ctx.save();
-    this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.restore();
+
+    // set up world coordinate system
+    this.ctx.save();
+    this.ctx.scale(this.pixelsPerUnit, this.pixelsPerUnit);
+    this.ctx.translate(
+      this.canvas.width / (2 * this.pixelsPerUnit),
+      this.canvas.height / (2 * this.pixelsPerUnit)
+    );
 
     this.turtles.ask((turtle: ElasticParticle) => {
       this.drawParticle(turtle);
@@ -63,17 +100,17 @@ export class Simulation {
   private drawParticle(particle: ElasticParticle) {
     this.ctx.save();
 
-    // set particle appearance
+    // set particle appearance with better visibility
     if (particle.isLarge) {
       // prominent red circle
       this.ctx.fillStyle = CONFIG.LARGE_PARTICLE.color;
       this.ctx.strokeStyle = "darkred";
-      this.ctx.lineWidth = 2;
+      this.ctx.lineWidth = 2.5 / this.pixelsPerUnit; // scale line width to world units
     } else {
-      // Small particles - subtle light blue circles
+      // small particles - more visible light blue circles
       this.ctx.fillStyle = CONFIG.SMALL_PARTICLES.color;
       this.ctx.strokeStyle = "blue";
-      this.ctx.lineWidth = 0.5;
+      this.ctx.lineWidth = 1.5 / this.pixelsPerUnit; // scale line width to world units
     }
 
     // draw particle with proper size scaling
@@ -88,8 +125,8 @@ export class Simulation {
   private drawOriginMarker() {
     this.ctx.save();
     this.ctx.strokeStyle = "#ddd";
-    this.ctx.lineWidth = 1;
-    this.ctx.setLineDash([5, 5]);
+    this.ctx.lineWidth = 1 / this.pixelsPerUnit; // scale line width to world units
+    this.ctx.setLineDash([5 / this.pixelsPerUnit, 5 / this.pixelsPerUnit]); // scale dash pattern
 
     // draw subtle crosshairs
     this.ctx.beginPath();
@@ -109,14 +146,6 @@ export class Simulation {
     minY: number;
     maxY: number;
   }) {
-    const worldWidth = worldBounds.maxX - worldBounds.minX;
-    const worldHeight = worldBounds.maxY - worldBounds.minY;
-
-    if (this.canvas.width === worldWidth && this.canvas.height === worldHeight) return;
-
-    this.canvas.width = worldWidth;
-    this.canvas.height = worldHeight;
-    this.canvas.style.width = `${worldWidth}px`;
-    this.canvas.style.height = `${worldHeight}px`;
+    this.setupCanvasDimensions(worldBounds);
   }
 }
