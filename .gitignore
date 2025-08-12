@@ -2,3 +2,7 @@ node_modules/
 dist/
 
 .direnv
+.claude/
+CLAUDE.md
+.DS_Store
+
