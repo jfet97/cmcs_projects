@@ -24,8 +24,8 @@ export interface LargeParticleState {
   lastCollisionTick: number;
 }
 
-// gaussian random number generator using Box-Muller transform
-// returns normally distributed random number with mean=0, std=1
+// Gaussian random number generator using Box-Muller transform
+// Returns normally distributed random number with mean=0, std=1
 let spare: number | null = null;
 export function gaussianRandom(): number {
   if (spare !== null) {
@@ -34,7 +34,7 @@ export function gaussianRandom(): number {
     return result;
   }
 
-  // box-Muller transform generates two independent standard normal variates
+  // Box-Muller transform generates two independent standard normal variates
   const u = Math.random();
   const v = Math.random();
   const magnitude = Math.sqrt(-2 * Math.log(u));
@@ -44,8 +44,31 @@ export function gaussianRandom(): number {
   return magnitude * Math.cos(angle);
 }
 
-// dynamic expected values based on simulation parameters
-// these replace the hardcoded theoretical values to reflect actual system behavior
+// Maxwell-Boltzmann velocity distribution for 2D thermal particles
+// In 2D: each velocity component follows Gaussian distribution with σ = √(kT/m)
+export function maxwellBoltzmannVelocity2D(
+  temperature: number,
+  mass: number
+): { vx: number; vy: number } {
+  // Standard deviation for each velocity component in 2D
+  const sigma = Math.sqrt(temperature / mass);
+
+  // Generate two independent Gaussian-distributed velocity components
+  const vx = sigma * gaussianRandom();
+  const vy = sigma * gaussianRandom();
+
+  return { vx, vy };
+}
+
+// Calculate thermal equilibrium temperature from average kinetic energy
+export function calculateTemperatureFromKineticEnergy(averageKineticEnergy: number): number {
+  // In 2D: ⟨½mv²⟩ = ⟨½m(vx² + vy²)⟩ = kT  (equipartition theorem)
+  // Therefore: kT = ⟨½mv²⟩, so T = ⟨½mv²⟩/k
+  return averageKineticEnergy; // In reduced units where k=1
+}
+
+// Maxwell-Boltzmann thermal equilibrium calculations for emergent Brownian motion
+// No dynamic calculations needed - using fundamental statistical mechanics
 
 export function calculateEffectiveTemperature(
   particleSpeed: number,
@@ -126,43 +149,40 @@ export function calculateDynamicExpectedValues(
 
 export const CONFIG = {
   LARGE_PARTICLE: {
-    mass: 50, // doubled mass for more realistic brownian dynamics
-    radius: 12, // doubled size for larger collision cross-section
+    mass: 20, // Moderate mass ratio 20:1 for observable Brownian motion
+    radius: 6, // Appropriate size for collision cross-section
     initialPosition: { x: 0, y: 0 }, // center of the world
     color: "red"
   } as const,
   SMALL_PARTICLES: {
-    count: 2500, // very high density for continuous bombardment
+    count: 2000, // Increased density for better Brownian motion
     mass: 1 as const,
-    radius: 1 as const,
-    speed: 0.5, // very slow for gentle thermal bombardment instead of energetic collisions
+    radius: 1.5 as const, // Slightly larger for better collision detection
+    temperature: 0.5, // Lower temperature for gentler thermal motion
     color: "lightblue" as const
   },
   PHYSICS: {
-    worldSize: 200, // it's x (-size, +size), y (-size, +size)
+    worldSize: 150, // Smaller world for higher effective density
     timeStep: 1 as const, // simulation time unit
-    collisionBuffer: 0.3 as const, // reduced buffer for more precise collisions
+    collisionBuffer: 0.2 as const, // Smaller buffer for precise physics
     minCollisionInterval: 1 as const // minimum interval to prevent sticking
   },
   LANGEVIN: {
-    // langevin dynamics parameters for true brownian motion
-    // Continuous-time SDE: M dv/dt = -γ v + sqrt(2 γ kT) ξ(t) with ⟨ξ⟩=0, ⟨ξ(t)ξ(t')⟩=δ(t-t')
-    gamma: 3.0, // high friction for rapid decorrelation with dense bombardment
-    kT: 1.5, // high thermal energy to compete with dense collisions
-    // expected diffusion coefficient: D = kT/gamma = 1.5/3.0 = 0.5
-    // expected velocity autocorrelation time: tau = M/gamma = 50/3 ≈ 17 ticks
-    enabled: true // enable/disable Langevin dynamics
+    // DISABLED - Brownian motion emerges naturally from collisions
+    gamma: 0, // Not used when disabled
+    kT: 0, // Not used when disabled
+    enabled: false // DISABLED for emergent Brownian motion
   },
   ANALYSIS: {
-    msdUpdateInterval: 3, // more frequent MSD updates for smoother analysis
-    historyLength: 15000, // increased buffer for longer analysis
-    chartUpdateInterval: 8 // slightly faster chart updates
+    msdUpdateInterval: 2, // Frequent MSD updates for better resolution
+    historyLength: 20000, // Longer history for better statistics
+    chartUpdateInterval: 5 // Faster chart updates for real-time feedback
   } as const
 };
 
 export function updateConfig(
   newConfig: Partial<{
-    smallParticles: Partial<Pick<typeof CONFIG.SMALL_PARTICLES, "count" | "speed">>;
+    smallParticles: Partial<Pick<typeof CONFIG.SMALL_PARTICLES, "count" | "temperature">>;
     physics: Partial<Pick<typeof CONFIG.PHYSICS, "worldSize">>;
   }>
 ) {
@@ -170,7 +190,7 @@ export function updateConfig(
     CONFIG.SMALL_PARTICLES = {
       ...CONFIG.SMALL_PARTICLES,
       count: newConfig.smallParticles.count ?? CONFIG.SMALL_PARTICLES.count,
-      speed: newConfig.smallParticles.speed ?? CONFIG.SMALL_PARTICLES.speed
+      temperature: newConfig.smallParticles.temperature ?? CONFIG.SMALL_PARTICLES.temperature
     };
   }
   if (newConfig.physics) {

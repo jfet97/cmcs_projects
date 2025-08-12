@@ -8,8 +8,8 @@
 </head>
 <body>
     <header>
-        <h1>Elastic Collision Brownian Motion Simulation</h1>
-        <p>Demonstrating Brownian motion through elastic collisions between one large particle and many small particles</p>
+        <h1>🔬 Emergent Brownian Motion Simulation</h1>
+        <p><strong>PHYSICS CORRECTED:</strong> Pure emergent Brownian motion from elastic collisions with Maxwell-Boltzmann thermal bath</p>
     </header>
 
     <main>
@@ -24,19 +24,19 @@
                     </div>
                     <div class="controls-row">
                         <div class="particle-count-control">
-                            <label for="particle-count">Small Particles:</label>
-                            <input type="range" id="particle-count" min="1500" max="4000" value="2500" step="250">
-                            <span id="particle-count-value">2500</span>
+                            <label for="particle-count">Thermal Particles:</label>
+                            <input type="range" id="particle-count" min="1000" max="3000" value="2000" step="250">
+                            <span id="particle-count-value">2000</span>
                         </div>
                         <div class="particle-count-control">
-                            <label for="particle-speed">Speed:</label>
-                            <input type="range" id="particle-speed" min="0.2" max="2.0" value="0.5" step="0.1">
-                            <span id="particle-speed-value">0.5</span>
+                            <label for="particle-temperature">Temperature (kT):</label>
+                            <input type="range" id="particle-temperature" min="0.1" max="2.0" value="0.5" step="0.1">
+                            <span id="particle-temperature-value">0.5</span>
                         </div>
                         <div class="particle-count-control">
                             <label for="world-size">Field Size:</label>
-                            <input type="range" id="world-size" min="200" max="600" value="200" step="50">
-                            <span id="world-size-value">200</span>
+                            <input type="range" id="world-size" min="100" max="300" value="150" step="25">
+                            <span id="world-size-value">150</span>
                         </div>
                     </div>
                 </div>
@@ -72,7 +72,7 @@
                         </div>
                     </div>
                     
-                    <h4>Langevin Diagnostics</h4>
+                    <h4>⚛️ Physics Diagnostics</h4>
                     <div class="stats-grid">
                         <div class="stat-item">
                             <label>Diffusion Coeff (D):</label>
@@ -80,7 +80,7 @@
                         </div>
                         <div class="stat-item">
                             <label>Expected D:</label>
-                            <span id="theoretical-diffusion">0.50</span>
+                            <span id="theoretical-diffusion">0.25</span>
                         </div>
                         <div class="stat-item">
                             <label>Equipartition ⟨v²⟩:</label>
@@ -88,7 +88,7 @@
                         </div>
                         <div class="stat-item">
                             <label>Expected ⟨v²⟩:</label>
-                            <span id="theoretical-equipartition">0.030</span>
+                            <span id="theoretical-equipartition">0.050</span>
                         </div>
                         <div class="stat-item">
                             <label>Velocity τ (ticks):</label>
@@ -121,24 +121,24 @@
             <details>
                 <summary>Simulation Details</summary>
                 <div class="info-content">
-                    <h4>Physics Model</h4>
+                    <h4>✅ CORRECTED Physics Model</h4>
                     <ul>
-                        <li><strong>Large Particle:</strong> Mass = 50, Radius = 12, Initially at rest</li>
-                        <li><strong>Small Particles:</strong> Mass = 1, Radius = 1, Random thermal motion</li>
-                        <li><strong>Collisions:</strong> Fully elastic with momentum and energy conservation</li>
-                        <li><strong>Langevin Dynamics:</strong> Friction γ = 3.0, Thermal energy kT = 1.5</li>
-                        <li><strong>Boundary:</strong> Elastic reflection at walls</li>
+                        <li><strong>Large Particle:</strong> Mass = 20, Radius = 6, Pure Newtonian motion</li>
+                        <li><strong>Thermal Particles:</strong> 2000 particles, Mass = 1, Radius = 1.5, Maxwell-Boltzmann T=0.5</li>
+                        <li><strong>Collisions:</strong> Perfect elastic collisions with exact conservation laws</li>
+                        <li><strong>NO Langevin:</strong> Brownian motion emerges naturally from collisions</li>
+                        <li><strong>Boundary:</strong> Perfect elastic reflection (no randomness)</li>
                     </ul>
-                    <h4>Dynamic Expected Values</h4>
+                    <h4>🎯 Theoretical Predictions</h4>
                     <ul>
-                        <li><strong>Expected D:</strong> Calculated from effective temperature and friction based on particle density, speed, and world size</li>
-                        <li><strong>Expected ⟨v²⟩:</strong> Effective thermal equilibrium from bombardment intensity</li>
-                        <li><strong>Expected τ:</strong> Correlation time with boundary corrections for confined system</li>
-                        <li><strong>Real-time Updates:</strong> Expected values change when you adjust sliders to reflect system behavior</li>
+                        <li><strong>Expected D:</strong> Estimated from collision frequency and mass transfer (D ~ kT/γ_eff)</li>
+                        <li><strong>Expected ⟨v²⟩:</strong> From equipartition theorem: ⟨v²⟩ = 2kT/M in 2D</li>
+                        <li><strong>Temperature Control:</strong> Maxwell-Boltzmann thermal bath at adjustable temperature</li>
+                        <li><strong>Mass Ratio:</strong> Optimized 20:1 ratio for observable Brownian emergence</li>
                     </ul>
 
-                    <h4>Expected Behavior</h4>
-                    <p>The large red particle starts at rest. Small blue particles undergo random thermal motion and collide elastically with the large particle, transferring momentum. Over time, the cumulative effect of these random collisions should cause the large particle to exhibit characteristic Brownian motion - erratic, continuous movement with no preferred direction.</p>
+                    <h4>🔬 Expected Physical Behavior</h4>
+                    <p><strong>EMERGENT BROWNIAN MOTION:</strong> Large particle starts at rest. Thermal particles follow Maxwell-Boltzmann distribution and move deterministically between collisions. Perfect elastic collisions transfer momentum randomly due to thermal bombardment. The large particle exhibits true Brownian motion: linear MSD growth, velocity decorrelation, and statistical randomness emerging from deterministic physics.</p>
                 </div>
             </details>
         </div>

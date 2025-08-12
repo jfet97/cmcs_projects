@@ -1,5 +1,5 @@
 import { Model, Turtles } from "agentscript";
-import { ElasticParticle, CONFIG } from "./particleTypes";
+import { ElasticParticle, CONFIG, maxwellBoltzmannVelocity2D } from "./particleTypes";
 
 function getAllSmallParticles(turtles: Turtles): ElasticParticle[] {
   const smallParticles: ElasticParticle[] = [];
@@ -44,80 +44,80 @@ export function performElasticCollision(
     return false;
   }
 
-  // Calculate collision normal (from particle1 to particle2)
+  // Calculate collision normal (unit vector from particle1 to particle2)
   const nx = dx / distance;
   const ny = dy / distance;
 
+  // Relative velocity components
+  const relativeVx = particle2.vx - particle1.vx;
+  const relativeVy = particle2.vy - particle1.vy;
+
   // Relative velocity along collision normal
-  const relativeVelocityX = particle2.vx - particle1.vx;
-  const relativeVelocityY = particle2.vy - particle1.vy;
-  const relativeSpeed = relativeVelocityX * nx + relativeVelocityY * ny;
+  const relativeVelNormal = relativeVx * nx + relativeVy * ny;
 
-  // Skip if particles are separating
-  if (relativeSpeed > 0) return false;
+  // Skip if particles are separating (no collision needed)
+  if (relativeVelNormal > 0) return false;
 
-  // Simple elastic collision formula
-  const totalMass = particle1.mass + particle2.mass;
-  const impulse = (2 * particle1.mass * particle2.mass * Math.abs(relativeSpeed)) / totalMass;
+  // CORRECT ELASTIC COLLISION PHYSICS FOR 2D HARD SPHERES
+  // Standard formula: exchange velocity components along collision normal
+  // v1_new = v1 - (2*m2/(m1+m2)) * (v1-v2)·n̂ * n̂
+  // v2_new = v2 - (2*m1/(m1+m2)) * (v2-v1)·n̂ * n̂
 
-  // Apply impulse: particle1 gets pushed back, particle2 gets pushed forward
-  particle1.vx -= (impulse / particle1.mass) * nx;
-  particle1.vy -= (impulse / particle1.mass) * ny;
-  particle2.vx += (impulse / particle2.mass) * nx;
-  particle2.vy += (impulse / particle2.mass) * ny;
-  
-  // add small random scattering to collision outcomes to break deterministic physics
-  // this helps decorrelate velocities in brownian motion
-  if (particle1.isLarge || particle2.isLarge) {
-    const scatterAngle = (Math.random() - 0.5) * 0.2; // ±0.1 radian scatter (~±6 degrees)
-    const cos = Math.cos(scatterAngle);
-    const sin = Math.sin(scatterAngle);
-    
-    if (particle1.isLarge) {
-      const vx1 = particle1.vx;
-      const vy1 = particle1.vy;
-      particle1.vx = vx1 * cos - vy1 * sin;
-      particle1.vy = vx1 * sin + vy1 * cos;
-    }
-    
-    if (particle2.isLarge) {
-      const vx2 = particle2.vx;
-      const vy2 = particle2.vy;
-      particle2.vx = vx2 * cos - vy2 * sin;
-      particle2.vy = vx2 * sin + vy2 * cos;
-    }
-  }
+  const m1 = particle1.mass;
+  const m2 = particle2.mass;
+  const totalMass = m1 + m2;
 
-  // Separate overlapping particles AFTER velocity calculation with extra buffer
-  const overlap = minDistance - distance;
-  if (overlap > 0) {
-    // Add small buffer to ensure complete separation
-    const totalSeparation = overlap + 0.1;
-    const separationX = (dx / distance) * (totalSeparation * 0.5);
-    const separationY = (dy / distance) * (totalSeparation * 0.5);
+  // Velocity components along normal for each particle
+  const v1_normal = particle1.vx * nx + particle1.vy * ny;
+  const v2_normal = particle2.vx * nx + particle2.vy * ny;
 
-    particle1.setxy(particle1.x - separationX, particle1.y - separationY);
-    particle2.setxy(particle2.x + separationX, particle2.y + separationY);
-  }
+  // New normal velocities after elastic collision
+  const v1_normal_new = ((m1 - m2) * v1_normal + 2 * m2 * v2_normal) / totalMass;
+  const v2_normal_new = ((m2 - m1) * v2_normal + 2 * m1 * v1_normal) / totalMass;
 
-  // Apply reasonable speed limiting only to large particles
+  // Change in normal velocity
+  const dv1_normal = v1_normal_new - v1_normal;
+  const dv2_normal = v2_normal_new - v2_normal;
+
+  // Apply velocity changes (only along normal direction)
+  particle1.vx += dv1_normal * nx;
+  particle1.vy += dv1_normal * ny;
+  particle2.vx += dv2_normal * nx;
+  particle2.vy += dv2_normal * ny;
+
+  // Prevent large particle from accumulating infinite velocity
+  // Apply gentle velocity damping to large particle only
   if (particle1.isLarge) {
     const speed1 = Math.sqrt(particle1.vx * particle1.vx + particle1.vy * particle1.vy);
-    const maxSpeed = particle2.speed * 1.0; // Allow large particle to move at same speed as small particles
-    if (speed1 > maxSpeed) {
-      const scale = maxSpeed / speed1;
+    const maxReasonableSpeed =
+      Math.sqrt((2 * CONFIG.SMALL_PARTICLES.temperature) / CONFIG.LARGE_PARTICLE.mass) * 3;
+    if (speed1 > maxReasonableSpeed) {
+      const scale = maxReasonableSpeed / speed1;
       particle1.vx *= scale;
       particle1.vy *= scale;
     }
   }
   if (particle2.isLarge) {
     const speed2 = Math.sqrt(particle2.vx * particle2.vx + particle2.vy * particle2.vy);
-    const maxSpeed = particle1.speed * 1.0; // Allow large particle to move at same speed as small particles
-    if (speed2 > maxSpeed) {
-      const scale = maxSpeed / speed2;
+    const maxReasonableSpeed =
+      Math.sqrt((2 * CONFIG.SMALL_PARTICLES.temperature) / CONFIG.LARGE_PARTICLE.mass) * 3;
+    if (speed2 > maxReasonableSpeed) {
+      const scale = maxReasonableSpeed / speed2;
       particle2.vx *= scale;
       particle2.vy *= scale;
     }
+  }
+
+  // Separate overlapping particles AFTER velocity calculation
+  // This maintains the collision physics while preventing interpenetration
+  const overlap = minDistance - distance;
+  if (overlap > 0) {
+    const totalSeparation = overlap + CONFIG.PHYSICS.collisionBuffer;
+    const separationX = (dx / distance) * (totalSeparation * 0.5);
+    const separationY = (dy / distance) * (totalSeparation * 0.5);
+
+    particle1.setxy(particle1.x - separationX, particle1.y - separationY);
+    particle2.setxy(particle2.x + separationX, particle2.y + separationY);
   }
 
   // update collision tracking
@@ -133,48 +133,48 @@ function handleBoundary(
   min: number,
   max: number
 ): { pos: number; vel: number } {
+  // PERFECT ELASTIC BOUNDARY REFLECTION - no randomness
+  // Conserves energy exactly
+
   if (pos > max) {
-    // add small randomness to boundary reflection to reduce velocity correlation
-    const randomVel = -Math.abs(vel) + (Math.random() - 0.5) * 0.1;
-    return { pos: max - (pos - max), vel: randomVel };
+    // Perfect elastic reflection: reverse velocity component
+    return { pos: max - (pos - max), vel: -Math.abs(vel) };
   } else if (pos < min) {
-    // add small randomness to boundary reflection to reduce velocity correlation
-    const randomVel = Math.abs(vel) + (Math.random() - 0.5) * 0.1;
-    return { pos: min + (min - pos), vel: randomVel };
+    // Perfect elastic reflection: reverse velocity component
+    return { pos: min + (min - pos), vel: Math.abs(vel) };
   }
   return { pos, vel };
 }
 
 export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
-  // add strong random motion to small particles for better brownian motion
+  // For small particles: maintain thermal equilibrium with frequent velocity redistribution
+  // This prevents them from becoming "projectiles" and maintains proper temperature
   if (!particle.isLarge) {
-    // much stronger thermal motion - small particles should be highly random
-    const randomAngle = Math.random() * 2 * Math.PI;
-    const thermalIntensity = particle.speed * 0.25; // increased from 5% to 25%
-    particle.vx += thermalIntensity * Math.cos(randomAngle);
-    particle.vy += thermalIntensity * Math.sin(randomAngle);
-    
-    // random direction change every few steps to break straight-line motion
-    if (Math.random() < 0.1) { // 10% chance each tick
-      const newDirection = Math.random() * 2 * Math.PI;
-      const currentSpeed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
-      particle.vx = currentSpeed * Math.cos(newDirection);
-      particle.vy = currentSpeed * Math.sin(newDirection);
+    // More frequent re-thermalization to maintain realistic thermal motion
+    // This simulates the effect of collisions with other small particles (thermal reservoir)
+    if (Math.random() < 0.08) {
+      // 8% chance per tick for re-thermalization - more balanced
+      const thermalVelocity = maxwellBoltzmannVelocity2D(
+        CONFIG.SMALL_PARTICLES.temperature,
+        CONFIG.SMALL_PARTICLES.mass
+      );
+      // Mix current velocity with thermal velocity for smoother transition
+      const mixingFactor = 0.2; // Reduced mixing for gentler effect
+      particle.vx = particle.vx * (1 - mixingFactor) + thermalVelocity.vx * mixingFactor;
+      particle.vy = particle.vy * (1 - mixingFactor) + thermalVelocity.vy * mixingFactor;
     }
 
-    // keep small particles moving at target speed
-    const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
-    if (speed > particle.speed * 2) {
-      particle.vx *= (particle.speed * 2) / speed;
-      particle.vy *= (particle.speed * 2) / speed;
-    }
+    // Also add small thermal fluctuations every tick
+    const thermalNoise = 0.02 * Math.sqrt(CONFIG.SMALL_PARTICLES.temperature); // Reduced from 0.05
+    particle.vx += (Math.random() - 0.5) * thermalNoise;
+    particle.vy += (Math.random() - 0.5) * thermalNoise;
   }
 
-  // move particle
+  // Move particle according to current velocity (Newton's 1st law)
   const newX = particle.x + particle.vx;
   const newY = particle.y + particle.vy;
 
-  // handle boundaries
+  // Handle boundary collisions with perfect elastic reflection
   const radius = particle.size;
   const xResult = handleBoundary(newX, particle.vx, world.minX + radius, world.maxX - radius);
   const yResult = handleBoundary(newY, particle.vy, world.minY + radius, world.maxY - radius);

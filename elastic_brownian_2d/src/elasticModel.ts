@@ -1,5 +1,10 @@
 import { Model } from "agentscript";
-import { ElasticParticle, LargeParticleState, CONFIG, gaussianRandom } from "./particleTypes";
+import {
+  ElasticParticle,
+  LargeParticleState,
+  CONFIG,
+  maxwellBoltzmannVelocity2D
+} from "./particleTypes";
 import { handleAllCollisions, moveParticle } from "./elasticCollisions";
 import { BrownianAnalysis } from "./brownianAnalysis";
 import { Simulation } from "./simulation";
@@ -81,12 +86,19 @@ export class ElasticModel extends Model {
       turtle.shape = "circle";
       turtle.isLarge = false;
 
-      // initial random velocity for thermal motion
-      // TODO: check che diamine è sto thermal motion, documenta anche nel readme
-      const angle = Math.random() * 2 * Math.PI;
-      turtle.vx = CONFIG.SMALL_PARTICLES.speed * Math.cos(angle);
-      turtle.vy = CONFIG.SMALL_PARTICLES.speed * Math.sin(angle);
-      turtle.speed = CONFIG.SMALL_PARTICLES.speed;
+      // Initialize velocity using Maxwell-Boltzmann distribution for thermal equilibrium
+      // This provides realistic thermal motion without artificial randomness during simulation
+      const thermalVelocity = maxwellBoltzmannVelocity2D(
+        CONFIG.SMALL_PARTICLES.temperature,
+        CONFIG.SMALL_PARTICLES.mass
+      );
+      turtle.vx = thermalVelocity.vx;
+      turtle.vy = thermalVelocity.vy;
+
+      // Store thermal speed for reference (RMS speed from Maxwell-Boltzmann)
+      turtle.speed = Math.sqrt(
+        (2 * CONFIG.SMALL_PARTICLES.temperature) / CONFIG.SMALL_PARTICLES.mass
+      );
       turtle.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
     });
   }
@@ -113,21 +125,9 @@ export class ElasticModel extends Model {
     const collisionsThisTick = handleAllCollisions(this.turtles, this.ticks);
     this.largeParticleState.collisionCount += collisionsThisTick;
 
-    // apply Langevin dynamics to large particle for true brownian motion
-    if (CONFIG.LANGEVIN.enabled && this.largeParticle) {
-      const dt = CONFIG.PHYSICS.timeStep;
-      const mass = this.largeParticle.mass;
-      const gamma = CONFIG.LANGEVIN.gamma;
-      const kT = CONFIG.LANGEVIN.kT;
-
-      // Continuous-time: M dv = -γ v dt + sqrt(2 γ kT) dW  (dW ~ N(0, dt))
-      // Divide by M: dv = -(γ/M) v dt + sqrt(2 γ kT / M^2) dW
-      // Euler–Maruyama: v_{n+1} = v_n - (γ/M) v_n dt + sqrt(2 γ kT / M^2) * sqrt(dt) * N(0,1)
-      const frictionFactor = 1 - (gamma / mass) * dt; // multiplicative form
-      const noiseStd = Math.sqrt((2 * gamma * kT * dt) / (mass * mass));
-      this.largeParticle.vx = this.largeParticle.vx * frictionFactor + noiseStd * gaussianRandom();
-      this.largeParticle.vy = this.largeParticle.vy * frictionFactor + noiseStd * gaussianRandom();
-    }
+    // NO ARTIFICIAL LANGEVIN DYNAMICS
+    // Brownian motion emerges naturally from elastic collisions with thermal bath
+    // The large particle moves purely according to Newton's laws between collisions
 
     // update position history for the large particle for MSD calculation
     if (this.ticks % CONFIG.ANALYSIS.msdUpdateInterval === 0) {
@@ -157,7 +157,7 @@ export class ElasticModel extends Model {
   }
 
   // public methods for external control
-  public resetSimulation(newParticleCount?: number, preserveSpeed?: number) {
+  public resetSimulation(newParticleCount?: number, preserveTemperature?: number) {
     // Save current large particle state if it exists
     const currentLargeParticle = this.largeParticle;
     const savedPosition = currentLargeParticle
@@ -183,9 +183,9 @@ export class ElasticModel extends Model {
     // create small particles with new count if provided
     this.setupSmallParticles(newParticleCount);
 
-    // apply preserved speed if provided
-    if (preserveSpeed !== undefined) {
-      this.updateParticleSpeed(preserveSpeed);
+    // apply preserved temperature if provided
+    if (preserveTemperature !== undefined) {
+      this.updateParticleTemperature(preserveTemperature);
     }
 
     // Update state with current particle position (preserve existing reference if particle was restored)
@@ -213,36 +213,28 @@ export class ElasticModel extends Model {
     this.ticks = 0;
   }
 
-  public updateParticleSpeed(newSpeed: number) {
-    // update speed for all small particles
+  public updateParticleTemperature(newTemperature: number) {
+    // Update global CONFIG first
+    CONFIG.SMALL_PARTICLES.temperature = newTemperature;
+
+    // Re-initialize all small particles with new Maxwell-Boltzmann distribution
     this.turtles.ask((turtle: ElasticParticle) => {
       if (!turtle.isLarge) {
-        // normalize current velocity
-        const currentSpeed = Math.sqrt(turtle.vx * turtle.vx + turtle.vy * turtle.vy);
+        // Generate new thermal velocity from Maxwell-Boltzmann distribution
+        const thermalVelocity = maxwellBoltzmannVelocity2D(newTemperature, turtle.mass);
+        turtle.vx = thermalVelocity.vx;
+        turtle.vy = thermalVelocity.vy;
 
-        // scale wrt new speed
-        // TODO: check why this is necessary, why do not apply new speed directly?
-        //       the old speed is in turtle.speed
-        if (currentSpeed > 0) {
-          const scale = newSpeed / currentSpeed;
-          turtle.vx *= scale;
-          turtle.vy *= scale;
-        } else {
-          // if particle were stationary, give it a random velocity
-          const angle = Math.random() * 2 * Math.PI;
-          turtle.vx = newSpeed * Math.cos(angle);
-          turtle.vy = newSpeed * Math.sin(angle);
-        }
-        turtle.speed = newSpeed;
+        // Update stored thermal speed
+        turtle.speed = Math.sqrt((2 * newTemperature) / turtle.mass);
       }
     });
   }
 
   public updateWorldSize(newSize: number) {
     // exclude large particle
-    // TODO: particle speed and count should come from up to date CONFIG
     const currentParticleCount = this.turtles.length - 1;
-    const currentSpeed = this.getSmallParticleSpeed();
+    const currentTemperature = this.getSmallParticleTemperature();
 
     this.world.minX = -newSize;
     this.world.maxX = newSize;
@@ -250,18 +242,12 @@ export class ElasticModel extends Model {
     this.world.maxY = newSize;
 
     this.simulation.updateCanvasVisualSize(this.world);
-    this.resetSimulation(currentParticleCount, currentSpeed);
+    this.resetSimulation(currentParticleCount, currentTemperature);
   }
 
-  private getSmallParticleSpeed(): number {
-    // TODO: config should be up to date
-    for (let i = 0; i < this.turtles.length; i++) {
-      const turtle = (this.turtles.toArray() as ElasticParticle[])[i];
-      if (!turtle.isLarge) {
-        return turtle.speed;
-      }
-    }
-    return CONFIG.SMALL_PARTICLES.speed;
+  private getSmallParticleTemperature(): number {
+    // Return current thermal temperature
+    return CONFIG.SMALL_PARTICLES.temperature;
   }
 
   public getStatistics() {
