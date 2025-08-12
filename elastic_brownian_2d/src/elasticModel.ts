@@ -1,5 +1,5 @@
 import { Model } from "agentscript";
-import { ElasticParticle, LargeParticleState, CONFIG } from "./particleTypes";
+import { ElasticParticle, LargeParticleState, CONFIG, gaussianRandom } from "./particleTypes";
 import { handleAllCollisions, moveParticle } from "./elasticCollisions";
 import { BrownianAnalysis } from "./brownianAnalysis";
 import { Simulation } from "./simulation";
@@ -113,6 +113,22 @@ export class ElasticModel extends Model {
     const collisionsThisTick = handleAllCollisions(this.turtles, this.ticks);
     this.largeParticleState.collisionCount += collisionsThisTick;
 
+    // apply Langevin dynamics to large particle for true brownian motion
+    if (CONFIG.LANGEVIN.enabled && this.largeParticle) {
+      const dt = CONFIG.PHYSICS.timeStep;
+      const mass = this.largeParticle.mass;
+      const gamma = CONFIG.LANGEVIN.gamma;
+      const kT = CONFIG.LANGEVIN.kT;
+
+      // Continuous-time: M dv = -γ v dt + sqrt(2 γ kT) dW  (dW ~ N(0, dt))
+      // Divide by M: dv = -(γ/M) v dt + sqrt(2 γ kT / M^2) dW
+      // Euler–Maruyama: v_{n+1} = v_n - (γ/M) v_n dt + sqrt(2 γ kT / M^2) * sqrt(dt) * N(0,1)
+      const frictionFactor = 1 - (gamma / mass) * dt; // multiplicative form
+      const noiseStd = Math.sqrt((2 * gamma * kT * dt) / (mass * mass));
+      this.largeParticle.vx = this.largeParticle.vx * frictionFactor + noiseStd * gaussianRandom();
+      this.largeParticle.vy = this.largeParticle.vy * frictionFactor + noiseStd * gaussianRandom();
+    }
+
     // update position history for the large particle for MSD calculation
     if (this.ticks % CONFIG.ANALYSIS.msdUpdateInterval === 0) {
       this.largeParticleState.positionHistory.push({
@@ -128,6 +144,10 @@ export class ElasticModel extends Model {
         );
       }
     }
+
+    // update velocity history for the large particle for autocorrelation analysis
+    // update velocity history every tick for better autocorrelation analysis
+    this.analysis.updateVelocityHistory(this.largeParticle.vx, this.largeParticle.vy, this.ticks);
 
     // update analysis
     this.analysis.update(this.ticks);

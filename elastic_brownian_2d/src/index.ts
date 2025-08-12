@@ -1,5 +1,5 @@
 import { ElasticModel } from "./elasticModel";
-import { CONFIG } from "./particleTypes";
+import { CONFIG, calculateDynamicExpectedValues } from "./particleTypes";
 
 // handles UI
 
@@ -19,6 +19,7 @@ class ElasticBrownianApp {
     this.initializeUIState();
     this.initializeModel();
     this.setupEventListeners();
+    this.updateExpectedValues(); // initialize expected values on startup
     this.startSimulation();
   }
 
@@ -57,6 +58,9 @@ class ElasticBrownianApp {
       this.uiState.particleCount = count;
 
       this.updateElement("particle-count-value", count.toString());
+      
+      // update expected values immediately when slider changes
+      this.updateExpectedValues();
 
       // reset simulation with new particle count, preserving current speed
       this.model.resetSimulation(count, this.uiState.particleSpeed);
@@ -72,6 +76,9 @@ class ElasticBrownianApp {
       this.uiState.particleSpeed = speed;
 
       this.updateElement("particle-speed-value", speed.toFixed(1));
+      
+      // update expected values immediately when slider changes
+      this.updateExpectedValues();
 
       this.model.updateParticleSpeed(speed);
     });
@@ -86,6 +93,9 @@ class ElasticBrownianApp {
       this.uiState.worldSize = size;
 
       this.updateElement("world-size-value", size.toString());
+      
+      // update expected values immediately when slider changes
+      this.updateExpectedValues();
 
       // TODO: CONFIG MUST BE UP TO DATE BEFORE CALLING THIS
       this.model.updateWorldSize(size);
@@ -131,8 +141,37 @@ class ElasticBrownianApp {
     this.updateElement("velocity-value", stats.velocity.toFixed(2));
     this.updateElement("displacement-value", stats.displacement.toFixed(2));
 
+    // calculate dynamic expected values based on current UI parameters
+    const dynamicExpected = calculateDynamicExpectedValues(
+      this.uiState.particleCount,
+      this.uiState.particleSpeed,
+      this.uiState.worldSize
+    );
+
+    // update Langevin diagnostics - compare measured vs dynamic expected values
+    this.updateElement("diffusion-coeff", analysis.diffusionCoeff.toFixed(3));
+    this.updateElement("theoretical-diffusion", dynamicExpected.expectedDiffusion.toFixed(3));
+    this.updateElement("equipartition-value", analysis.equipartition.toFixed(4));
+    this.updateElement("theoretical-equipartition", dynamicExpected.expectedEquipartition.toFixed(4));
+    this.updateElement("velocity-decay-time", analysis.velocityDecayTime.toFixed(0));
+    this.updateElement("theoretical-decay-time", dynamicExpected.expectedDecayTime.toFixed(1));
+
     // update Brownian motion indicator
     this.updateBrownianIndicator(analysis);
+  }
+
+  private updateExpectedValues() {
+    // calculate and update expected values based on current UI state
+    const dynamicExpected = calculateDynamicExpectedValues(
+      this.uiState.particleCount,
+      this.uiState.particleSpeed,
+      this.uiState.worldSize
+    );
+
+    // update the expected value displays immediately
+    this.updateElement("theoretical-diffusion", dynamicExpected.expectedDiffusion.toFixed(3));
+    this.updateElement("theoretical-equipartition", dynamicExpected.expectedEquipartition.toFixed(4));
+    this.updateElement("theoretical-decay-time", dynamicExpected.expectedDecayTime.toFixed(1));
   }
 
   private updateElement(
@@ -154,21 +193,28 @@ class ElasticBrownianApp {
       // remove existing classes
       indicator.classList.remove("positive", "negative");
 
-      if (analysis.dataPoints < 50) {
+      // need sufficient data for analysis
+      if (analysis.dataPoints < 30 || analysis.velocityDataPoints < 30) {
         indicator.textContent = "Initializing...";
         return;
       }
 
-      // TODO: use velocity autocorrelation and Motion Character (?)
-      // if (analysis.isBrownianMotion && analysis.msdSlope > 0.01) {
-      //   indicator.textContent = "Yes - Detected";
-      //   indicator.classList.add("positive");
-      // } else if (analysis.msdSlope < 0.001) {
-      //   indicator.textContent = "No - Static";
-      //   indicator.classList.add("negative");
-      // } else {
-      //   indicator.textContent = "Developing...";
-      // }
+      // detection based only on velocity autocorrelation
+      if (analysis.isBrownianByAutocorrelation && analysis.autocorrelationDataPoints > 5) {
+        indicator.textContent = "Yes - Detected";
+        indicator.classList.add("positive");
+      } else if (analysis.currentVelocity < 0.01) {
+        indicator.textContent = "No - Static";
+        indicator.classList.add("negative");
+      } else {
+        // debug info for developing state
+        const lag3 = analysis.velocityAutocorrelationLag3;
+        const debugInfo =
+          lag3 !== null
+            ? `(lag3: ${lag3.toFixed(2)})`
+            : `(${analysis.autocorrelationDataPoints} pts)`;
+        indicator.textContent = `Developing... ${debugInfo}`;
+      }
     });
   }
 
@@ -184,6 +230,11 @@ class ElasticBrownianApp {
     this.updateElement("collision-count", "0");
     this.updateElement("velocity-value", "0.00");
     this.updateElement("displacement-value", "0.00");
+
+    // reset Langevin diagnostics
+    this.updateElement("diffusion-coeff", "0.000");
+    this.updateElement("equipartition-value", "0.0000");
+    this.updateElement("velocity-decay-time", "0");
 
     this.updateElement("brownian-indicator", "Initializing...", indicator => {
       indicator.classList.remove("positive", "negative");

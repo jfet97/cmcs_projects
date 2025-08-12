@@ -8,12 +8,13 @@ A TypeScript-based physics simulation demonstrating **Brownian motion** through 
 
 ## 🎯 Overview
 
-This simulation recreates the fundamental physics behind Brownian motion:
-- **One large red particle** (mass=25, radius=6) starts at rest at the origin
-- **300 small blue particles** (mass=1, radius=1.2) undergo continuous thermal motion
-- **Elastic collisions** transfer momentum from small to large particles
-- **Cumulative random collisions** cause the large particle to exhibit characteristic Brownian motion
-- **Real-time analysis** tracks Mean Squared Displacement (MSD) and velocity autocorrelation
+This simulation approximates Brownian motion with a hybrid approach:
+- **One large red particle** (mass = 50, radius = 12) at rest initially
+- **Many small blue particles** (default 2500, mass = 1, radius = 1) providing random bombardment
+- **Elastic collisions (pairwise large–small)** for momentum transfer
+- **Additional Langevin stochastic force** applied only to the large particle (fluctuation–dissipation)
+- **Artificial thermal kicks** on small particles to maintain agitation (not a full Maxwell–Boltzmann gas)
+- **Real-time analysis**: Mean Squared Displacement (MSD) + velocity autocorrelation
 
 The simulation demonstrates how microscopic thermal motion creates observable macroscopic phenomena, validating Einstein's 1905 theory of Brownian motion.
 
@@ -61,41 +62,42 @@ pnpm lint:fix
 ### Particle System
 | Component | Mass | Radius | Color | Behavior |
 |-----------|------|--------|-------|----------|
-| **Large Particle** | 25 | 6 units | Red | Initially at rest, moves via collisions |
-| **Small Particles** | 1 | 1.2 units | Light Blue | Maxwell-Boltzmann thermal motion |
+| **Large Particle** | 50 | 12 units | Red | Langevin + collisions |
+| **Small Particles** | 1 | 1 unit | Light Blue | Random kicks (approx thermal) |
 
-### Collision Mechanics
-- **Perfectly elastic collisions** with momentum and energy conservation
-- **Reduced mass formula** for accurate momentum transfer between different masses
-- **Spatial grid optimization** reduces collision detection from O(n²) to O(n)
-- **Collision throttling** prevents numerical instability
-- **Elastic boundary reflection** at simulation edges
+### Collision & Stochastic Mechanics
+- **Elastic collisions** between large particle and each small particle (O(N) per tick)
+- **Impulse-based update** conserving momentum & kinetic energy for the pair
+- **Light random scattering** added to break deterministic symmetry
+- **Langevin integration** for large particle: dv = -(γ/M) v dt + sqrt(2 γ kT / M²) sqrt(dt) ξ
+- **Boundary reflections** (elastic with slight randomization)
 
 ### Physics Parameters
 ```typescript
+// Current defaults (see particleTypes.ts)
 CONFIG = {
-  LARGE_PARTICLE: { mass: 100, radius: 6, initialPosition: {x: 0, y: 0} },
-  SMALL_PARTICLES: { count: 300, mass: 1, radius: 1.2, speed: 3.0 },
-  PHYSICS: { worldSize: 300, collisionBuffer: 0.3, minCollisionInterval: 2 },
+  LARGE_PARTICLE: { mass: 50, radius: 12, initialPosition: { x: 0, y: 0 } },
+  SMALL_PARTICLES: { count: 2500, mass: 1, radius: 1, speed: 0.5 },
+  PHYSICS: { worldSize: 200, timeStep: 1, collisionBuffer: 0.3, minCollisionInterval: 1 },
+  LANGEVIN: { gamma: 3.0, kT: 1.5, enabled: true },
   ANALYSIS: { msdUpdateInterval: 3, historyLength: 15000, chartUpdateInterval: 8 }
-}
+};
+// Theoretical relations (2D):
+//   D = kT / γ
+//   ⟨v²⟩ = 2 kT / M
+//   τ_vel = M / γ
 ```
 
 ## 🏗️ Architecture
 
 ### Core Components
 
-#### 1. **ElasticModel** (`elasticModel.ts`) - Main Simulation Controller
-- Extends AgentScript's Model class for physics simulation lifecycle
-- Manages large particle setup (red, mass=100, radius=6) and small particles (blue, mass=1, radius=1.2)
-- Coordinates collision detection, position tracking, and analysis updates
-- Provides public API for resets, statistics, and parameter updates
+#### 1. **ElasticModel** (`elasticModel.ts`)
+- Creates particles, advances dynamics (collision + Langevin), updates analysis
 
-#### 2. **ElasticCollisions** (`elasticCollisions.ts`) - Physics Engine
-- **Spatial Grid**: O(n) collision detection using cell-based partitioning
-- **Elastic Collision Mathematics**: Impulse formula with reduced mass for momentum conservation
-- **Thermal Motion**: Maxwell-Boltzmann distribution for realistic thermal behavior
-- **Boundary Conditions**: Elastic wall reflections with velocity damping
+#### 2. **ElasticCollisions** (`elasticCollisions.ts`)
+- Direct O(N) loop (only large vs each small). No spatial grid currently.
+- Elastic impulse + mild random rotation for decorrelation
 
 #### 3. **BrownianAnalysis** (`brownianAnalysis.ts`) - Statistical Analysis
 - **MSD Calculation**: Real-time Mean Squared Displacement with slope analysis
@@ -162,25 +164,20 @@ Simulation (Canvas Rendering System)
 
 ## 📈 Analysis & Visualization
 
-### Mean Squared Displacement (MSD) Analysis
-- **Real-time Chart.js visualization** of MSD vs time with smooth updates
-- **Linear growth detection** using least-squares regression with time normalization
-- **Slope calculation**: MSD slope > 0.01 indicates true Brownian motion
-- **Intelligent auto-reset**: Multi-criteria detection of stuck particles (velocity < 0.005, slope < 0.0001)
-- **15,000 data point history** for long-term statistical analysis
+### Mean Squared Displacement (MSD)
+- MSD(t) = (x−x0)² + (y−y0)² collected every few ticks
+- Linear regime expected: MSD ≈ 4 D t in 2D (before confinement saturation)
+- Slope (last window) used to estimate D_est = slope / 4
 
-### Velocity Autocorrelation Analysis  
-- **Time-lagged correlation calculation**: C(τ) = ⟨v(t)·v(t+τ)⟩ / ⟨v(t)·v(t)⟩
-- **Memory loss detection**: Autocorrelation decay indicates memoryless motion
-- **Normalized visualization**: Scaling by lag-0 autocorrelation for consistent interpretation  
-- **Brownian motion signature**: Exponential decay to zero correlation
+### Velocity Autocorrelation
+- Implementation uses directional cosine correlation (angle decorrelation)
+- C_dir(τ) = mean[ cos θ(τ) ] where θ angle between v(t) and v(t+τ)
+- Faster to stabilize under confined geometry
 
-### Brownian Motion Detection Criteria
-For validated Brownian motion, the system checks:
-- **MSD Linear Growth**: Slope > 0.01 (diffusive behavior)
-- **Velocity Decorrelation**: Autocorrelation → 0 (memory loss)
-- **Sustained Motion**: No preferred direction or static states
-- **Statistical Significance**: >50 data points for reliable analysis
+### Brownian Motion Detection Criteria (current heuristic)
+- Velocity directional correlation drops significantly by lag ≈ 3
+- MSD slope positive and within plausible diffusion range
+- Large particle not effectively static
 
 ### Real-Time Visualization
 - **Particle rendering** with physics-accurate sizes and colors
@@ -199,7 +196,7 @@ For validated Brownian motion, the system checks:
 
 ### Core Physics Implementation
 
-#### Elastic Collision Mathematics
+#### Elastic Collision Mathematics (Simplified Pairwise)
 ```typescript
 // Impulse formula: J = -(1 + e) * v_rel_n * μ  
 const reducedMass = (m1 * m2) / (m1 + m2);
@@ -210,12 +207,14 @@ particle1.vx += (impulse / particle1.mass) * normalX;
 particle2.vx -= (impulse / particle2.mass) * normalX;
 ```
 
-#### Thermal Motion System
+#### Langevin & Randomization
 ```typescript
-// Maxwell-Boltzmann thermal energy distribution
-const thermalEnergy = 0.1; // kT parameter
-const thermalMagnitude = Math.sqrt(2 * thermalEnergy / particle.mass);
-// Random thermal perturbations maintain realistic temperature
+// Large particle (Euler–Maruyama)
+v <- v * (1 - γ dt / M) + sqrt(2 γ kT dt / M²) * N(0,1)
+
+// Small particles (heuristic agitation)
+vx += intensity * cos(φ); vy += intensity * sin(φ);
+// plus occasional random reorientation & speed capping
 ```
 
 #### Spatial Grid Optimization
@@ -235,29 +234,7 @@ const nearbyParticles = getNearbyParticles(particle.x, particle.y, grid);
 ## 🧪 Configuration & Extension
 
 ### Physics Parameter Tuning
-All physics parameters centralized in `particleTypes.ts`:
-```typescript
-export const CONFIG = {
-  LARGE_PARTICLE: {
-    mass: 25,               // Optimal mass ratio (25:1) for responsive Brownian motion
-    radius: 6,              // Collision cross-section optimization
-    initialPosition: {x: 0, y: 0},
-    color: "red"
-  },
-  SMALL_PARTICLES: {
-    count: 300,             // Optimal density for collision frequency vs performance
-    mass: 1,                // Unit mass for simple calculations
-    radius: 1.2,            // Sized for realistic collisions without overcrowding  
-    speed: 3.0,             // Thermal speed tuned for observable Brownian motion
-    color: "lightblue"
-  },
-  PHYSICS: {
-    worldSize: 300,         // Simulation boundaries (-300 to +300)
-    collisionBuffer: 0.3,   // Overlap tolerance for numerical stability
-    minCollisionInterval: 2 // Collision throttling to prevent oscillation
-  }
-}
-```
+Central parameters in `particleTypes.ts` (see code for authoritative values). Adjust sliders to explore density, speed, confinement.
 
 ### Statistical Analysis Extensions
 The `BrownianAnalysis` class can be extended for additional metrics:
@@ -282,11 +259,11 @@ public validateEinsteinRelation(): boolean {
 ### Brownian Motion Physics
 This simulation validates fundamental statistical mechanics principles:
 
-#### Einstein's Theory (1905)
-- **Diffusion Equation**: MSD(t) = 4Dt where D is the diffusion coefficient
-- **Random Walk Model**: Particle position follows stochastic process
-- **Fluctuation-Dissipation**: Thermal energy drives observable motion
-- **Scale Invariance**: Self-similar behavior across time scales
+#### Einstein / Langevin Relations (in reduced units)
+- MSD: 4 D t (2D)
+- D = kT / γ
+- ⟨v²⟩ = 2 kT / M
+- Velocity autocorr ~ exp(-t/τ) with τ = M/γ
 
 #### Implementation Features
 - **Kinetic Theory**: Models molecular collision dynamics

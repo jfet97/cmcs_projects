@@ -65,6 +65,28 @@ export function performElasticCollision(
   particle1.vy -= (impulse / particle1.mass) * ny;
   particle2.vx += (impulse / particle2.mass) * nx;
   particle2.vy += (impulse / particle2.mass) * ny;
+  
+  // add small random scattering to collision outcomes to break deterministic physics
+  // this helps decorrelate velocities in brownian motion
+  if (particle1.isLarge || particle2.isLarge) {
+    const scatterAngle = (Math.random() - 0.5) * 0.2; // ±0.1 radian scatter (~±6 degrees)
+    const cos = Math.cos(scatterAngle);
+    const sin = Math.sin(scatterAngle);
+    
+    if (particle1.isLarge) {
+      const vx1 = particle1.vx;
+      const vy1 = particle1.vy;
+      particle1.vx = vx1 * cos - vy1 * sin;
+      particle1.vy = vx1 * sin + vy1 * cos;
+    }
+    
+    if (particle2.isLarge) {
+      const vx2 = particle2.vx;
+      const vy2 = particle2.vy;
+      particle2.vx = vx2 * cos - vy2 * sin;
+      particle2.vy = vx2 * sin + vy2 * cos;
+    }
+  }
 
   // Separate overlapping particles AFTER velocity calculation with extra buffer
   const overlap = minDistance - distance;
@@ -112,20 +134,33 @@ function handleBoundary(
   max: number
 ): { pos: number; vel: number } {
   if (pos > max) {
-    return { pos: max - (pos - max), vel: -Math.abs(vel) };
+    // add small randomness to boundary reflection to reduce velocity correlation
+    const randomVel = -Math.abs(vel) + (Math.random() - 0.5) * 0.1;
+    return { pos: max - (pos - max), vel: randomVel };
   } else if (pos < min) {
-    return { pos: min + (min - pos), vel: Math.abs(vel) };
+    // add small randomness to boundary reflection to reduce velocity correlation
+    const randomVel = Math.abs(vel) + (Math.random() - 0.5) * 0.1;
+    return { pos: min + (min - pos), vel: randomVel };
   }
   return { pos, vel };
 }
 
 export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
-  // add random motion to small particles
+  // add strong random motion to small particles for better brownian motion
   if (!particle.isLarge) {
+    // much stronger thermal motion - small particles should be highly random
     const randomAngle = Math.random() * 2 * Math.PI;
-    const thermalIntensity = particle.speed * 0.05; // 5% of target speed
+    const thermalIntensity = particle.speed * 0.25; // increased from 5% to 25%
     particle.vx += thermalIntensity * Math.cos(randomAngle);
     particle.vy += thermalIntensity * Math.sin(randomAngle);
+    
+    // random direction change every few steps to break straight-line motion
+    if (Math.random() < 0.1) { // 10% chance each tick
+      const newDirection = Math.random() * 2 * Math.PI;
+      const currentSpeed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+      particle.vx = currentSpeed * Math.cos(newDirection);
+      particle.vy = currentSpeed * Math.sin(newDirection);
+    }
 
     // keep small particles moving at target speed
     const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);

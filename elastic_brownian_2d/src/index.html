@@ -25,13 +25,13 @@
                     <div class="controls-row">
                         <div class="particle-count-control">
                             <label for="particle-count">Small Particles:</label>
-                            <input type="range" id="particle-count" min="100" max="800" value="300" step="50">
-                            <span id="particle-count-value">300</span>
+                            <input type="range" id="particle-count" min="1500" max="4000" value="2500" step="250">
+                            <span id="particle-count-value">2500</span>
                         </div>
                         <div class="particle-count-control">
                             <label for="particle-speed">Speed:</label>
-                            <input type="range" id="particle-speed" min="1" max="8" value="3" step="0.5">
-                            <span id="particle-speed-value">3.0</span>
+                            <input type="range" id="particle-speed" min="0.2" max="2.0" value="0.5" step="0.1">
+                            <span id="particle-speed-value">0.5</span>
                         </div>
                         <div class="particle-count-control">
                             <label for="world-size">Field Size:</label>
@@ -71,6 +71,34 @@
                             <span id="brownian-indicator">Initializing...</span>
                         </div>
                     </div>
+                    
+                    <h4>Langevin Diagnostics</h4>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <label>Diffusion Coeff (D):</label>
+                            <span id="diffusion-coeff">0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Expected D:</label>
+                            <span id="theoretical-diffusion">0.50</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Equipartition ⟨v²⟩:</label>
+                            <span id="equipartition-value">0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Expected ⟨v²⟩:</label>
+                            <span id="theoretical-equipartition">0.030</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Velocity τ (ticks):</label>
+                            <span id="velocity-decay-time">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <label>Expected τ:</label>
+                            <span id="theoretical-decay-time">16.7</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="chart-section">
@@ -95,15 +123,18 @@
                 <div class="info-content">
                     <h4>Physics Model</h4>
                     <ul>
-                        <li><strong>Large Particle:</strong> Mass = 100, Radius = 6, Initially at rest</li>
-                        <li><strong>Small Particles:</strong> Mass = 1, Radius = 1.5, Random thermal motion</li>
+                        <li><strong>Large Particle:</strong> Mass = 50, Radius = 12, Initially at rest</li>
+                        <li><strong>Small Particles:</strong> Mass = 1, Radius = 1, Random thermal motion</li>
                         <li><strong>Collisions:</strong> Fully elastic with momentum and energy conservation</li>
+                        <li><strong>Langevin Dynamics:</strong> Friction γ = 3.0, Thermal energy kT = 1.5</li>
                         <li><strong>Boundary:</strong> Elastic reflection at walls</li>
                     </ul>
-                    <h4>Brownian Motion Indicators</h4>
+                    <h4>Dynamic Expected Values</h4>
                     <ul>
-                        <li><strong>Velocity Autocorrelation:</strong> Should decay to zero (memoryless motion)</li>
-                        <li><strong>Motion Character:</strong> Random, non-directional displacement</li>
+                        <li><strong>Expected D:</strong> Calculated from effective temperature and friction based on particle density, speed, and world size</li>
+                        <li><strong>Expected ⟨v²⟩:</strong> Effective thermal equilibrium from bombardment intensity</li>
+                        <li><strong>Expected τ:</strong> Correlation time with boundary corrections for confined system</li>
+                        <li><strong>Real-time Updates:</strong> Expected values change when you adjust sliders to reflect system behavior</li>
                     </ul>
 
                     <h4>Expected Behavior</h4>
