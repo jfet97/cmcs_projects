@@ -11,6 +11,16 @@ function getAllSmallParticles(turtles: Turtles): ElasticParticle[] {
   return smallParticles;
 }
 
+function getLargeParticle(turtles: Turtles): ElasticParticle | undefined {
+  let largeParticle: ElasticParticle | undefined;
+  turtles.ask((turtle: ElasticParticle) => {
+    if (turtle.isLarge) {
+      largeParticle = turtle;
+    }
+  });
+  return largeParticle;
+}
+
 export function performElasticCollision(
   particle1: ElasticParticle,
   particle2: ElasticParticle,
@@ -137,18 +147,12 @@ export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
 
 export function handleAllCollisions(turtles: Turtles, currentTick: number): number {
   let collisionCount = 0;
-  let largeParticle: ElasticParticle | undefined;
-
-  // Find the large particle
-  turtles.ask((turtle: ElasticParticle) => {
-    if (turtle.isLarge) {
-      largeParticle = turtle;
-    }
-  });
+  const largeParticle = getLargeParticle(turtles);
 
   if (!largeParticle) return 0;
 
-  // Check collisions with all small particles
+  // check collisions of large particle with small particles
+
   const smallParticles = getAllSmallParticles(turtles);
   for (const smallParticle of smallParticles) {
     if (performElasticCollision(smallParticle, largeParticle, currentTick)) {
