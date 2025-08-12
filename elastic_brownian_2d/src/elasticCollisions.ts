@@ -21,6 +21,7 @@ function getLargeParticle(turtles: Turtles): ElasticParticle | undefined {
   return largeParticle;
 }
 
+// TODO: check logic
 export function performElasticCollision(
   particle1: ElasticParticle,
   particle2: ElasticParticle,
@@ -35,7 +36,7 @@ export function performElasticCollision(
     return false;
   }
 
-  // Prevent rapid repeated collisions
+  // prevent rapid repeated collisions
   if (
     Math.abs(currentTick - particle1.lastCollisionTick) < CONFIG.PHYSICS.minCollisionInterval ||
     Math.abs(currentTick - particle2.lastCollisionTick) < CONFIG.PHYSICS.minCollisionInterval
@@ -43,7 +44,7 @@ export function performElasticCollision(
     return false;
   }
 
-  // Separate overlapping particles first
+  // separate overlapping particles first
   const overlap = minDistance - distance + CONFIG.PHYSICS.collisionBuffer;
   if (overlap > 0) {
     const separationX = (dx / distance) * (overlap / 2);
@@ -53,37 +54,37 @@ export function performElasticCollision(
     particle2.setxy(particle2.x + separationX, particle2.y + separationY);
   }
 
-  // Calculate collision normal (unit vector from particle1 to particle2)
+  // calculate collision normal (unit vector from particle1 to particle2)
   const nx = dx / distance;
   const ny = dy / distance;
 
-  // Relative velocity
+  // relative velocity
   const rvx = particle2.vx - particle1.vx;
   const rvy = particle2.vy - particle1.vy;
 
-  // Relative velocity in collision normal direction
+  // relative velocity in collision normal direction
   const speed = rvx * nx + rvy * ny;
 
-  // Do not resolve if velocities are separating
+  // do not resolve if velocities are separating
   if (speed > 0) {
     return false;
   }
 
-  // Simple elastic collision: exchange velocities proportionally to mass
+  // simple elastic collision: exchange velocities proportionally to mass
   const impulse =
     (-2 * speed * particle1.mass * particle2.mass) / (particle1.mass + particle2.mass);
 
-  // Update velocities based on elastic collision physics
+  // update velocities based on elastic collision physics
   particle1.vx += (impulse / particle1.mass) * nx;
   particle1.vy += (impulse / particle1.mass) * ny;
   particle2.vx -= (impulse / particle2.mass) * nx;
   particle2.vy -= (impulse / particle2.mass) * ny;
 
-  // Keep large particles at reasonable speed
+  // keep large particles at reasonable speed
   limitParticleSpeed(particle1, currentTick);
   limitParticleSpeed(particle2, currentTick);
 
-  // Update collision tracking
+  // update collision tracking
   particle1.lastCollisionTick = currentTick;
   particle2.lastCollisionTick = currentTick;
 
