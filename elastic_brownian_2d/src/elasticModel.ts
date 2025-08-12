@@ -138,11 +138,27 @@ export class ElasticModel extends Model {
 
   // public methods for external control
   public resetSimulation(newParticleCount?: number, preserveSpeed?: number) {
-    // clear all turtles except the large particle
+    // Save current large particle state if it exists
+    const currentLargeParticle = this.largeParticle;
+    const savedPosition = currentLargeParticle
+      ? { x: currentLargeParticle.x, y: currentLargeParticle.y }
+      : null;
+    const savedVelocity = currentLargeParticle
+      ? { vx: currentLargeParticle.vx, vy: currentLargeParticle.vy }
+      : null;
+
+    // clear all turtles
     this.turtles.clear();
 
     // create large particle
     this.setupLargeParticle();
+
+    // Restore position and velocity if we had a previous large particle
+    if (savedPosition && savedVelocity) {
+      this.largeParticle.setxy(savedPosition.x, savedPosition.y);
+      this.largeParticle.vx = savedVelocity.vx;
+      this.largeParticle.vy = savedVelocity.vy;
+    }
 
     // create small particles with new count if provided
     this.setupSmallParticles(newParticleCount);
@@ -152,21 +168,23 @@ export class ElasticModel extends Model {
       this.updateParticleSpeed(preserveSpeed);
     }
 
-    // TODO: check, simplify
-    // Reset state and analysis in correct sequence to prevent inconsistencies
-    // 1. reset analysis to clear all accumulated data
-    this.analysis.reset();
+    // Update state with current particle position (preserve existing reference if particle was restored)
+    if (savedPosition) {
+      // If we restored a previous particle, keep the existing reference position for continuous MSD tracking
+      // Just update the current position in the state
+      this.largeParticleState.positionHistory = []; // Clear history but keep reference
+    } else {
+      // Fresh start - reset analysis and reference position
+      this.analysis.reset();
+      this.largeParticleState.x0 = this.largeParticle.x;
+      this.largeParticleState.y0 = this.largeParticle.y;
+      this.largeParticleState.positionHistory = [];
+      this.analysis.updateReferencePosition();
+    }
 
-    // 2. update large particle state with current particle position
-    this.largeParticleState.x0 = this.largeParticle.x;
-    this.largeParticleState.y0 = this.largeParticle.y;
-    this.largeParticleState.positionHistory = [];
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.totalEnergyReceived = 0;
     this.largeParticleState.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
-
-    // 3. sync analysis reference position with state (must be after state reset)
-    this.analysis.updateReferencePosition();
 
     // Canvas size should remain unchanged when just resetting particle count
     // only resize canvas when world size actually changes (in updateWorldSize method)
