@@ -98,9 +98,10 @@ class ElasticBrownianApp {
         this.model.step();
         this.updateStatistics();
       }
+      requestAnimationFrame(animate);
     };
 
-    animate();
+    requestAnimationFrame(animate);
   }
 
   private updateStatistics() {
