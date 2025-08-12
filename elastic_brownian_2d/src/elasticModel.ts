@@ -37,7 +37,6 @@ export class ElasticModel extends Model {
       turtle.isLarge = true;
       turtle.vx = 0;
       turtle.vy = 0;
-      turtle.stepSize = 0; // large particle doesn't do random walk autonomously
       turtle.speed = 0;
       turtle.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
 
@@ -87,7 +86,6 @@ export class ElasticModel extends Model {
       const angle = Math.random() * 2 * Math.PI;
       turtle.vx = CONFIG.SMALL_PARTICLES.speed * Math.cos(angle);
       turtle.vy = CONFIG.SMALL_PARTICLES.speed * Math.sin(angle);
-      turtle.stepSize = CONFIG.SMALL_PARTICLES.stepSize;
       turtle.speed = CONFIG.SMALL_PARTICLES.speed;
       turtle.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
     });

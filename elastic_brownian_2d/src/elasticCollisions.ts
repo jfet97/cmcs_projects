@@ -117,13 +117,14 @@ function handleBoundary(
 }
 
 export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
-  // Add random motion to small particles
+  // add random motion to small particles
   if (!particle.isLarge) {
     const randomAngle = Math.random() * 2 * Math.PI;
-    particle.vx += 0.1 * Math.cos(randomAngle);
-    particle.vy += 0.1 * Math.sin(randomAngle);
+    const thermalIntensity = particle.speed * 0.05; // 5% of target speed
+    particle.vx += thermalIntensity * Math.cos(randomAngle);
+    particle.vy += thermalIntensity * Math.sin(randomAngle);
 
-    // Keep small particles moving at target speed
+    // keep small particles moving at target speed
     const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
     if (speed > particle.speed * 2) {
       particle.vx *= (particle.speed * 2) / speed;
@@ -131,11 +132,11 @@ export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
     }
   }
 
-  // Move particle
+  // move particle
   const newX = particle.x + particle.vx;
   const newY = particle.y + particle.vy;
 
-  // Handle boundaries
+  // handle boundaries
   const radius = particle.size;
   const xResult = handleBoundary(newX, particle.vx, world.minX + radius, world.maxX - radius);
   const yResult = handleBoundary(newY, particle.vy, world.minY + radius, world.maxY - radius);

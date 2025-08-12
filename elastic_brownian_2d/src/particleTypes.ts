@@ -8,7 +8,6 @@ export interface ElasticParticle extends Turtle {
   vy: number;
 
   isLarge: boolean; // particle type identifier
-  stepSize: number; // for random walk
   speed: number; // current speed magnitude
 
   // TODO: freca?
@@ -36,7 +35,6 @@ export const CONFIG = {
     count: 300, // limited for better performance and realistic density;
     mass: 1 as const,
     radius: 1 as const,
-    stepSize: 2.0 as const, // for realistic thermal motion
     speed: 3.0, // nice speed for observable Brownian motion
     color: "lightblue" as const
   },

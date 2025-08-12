@@ -24,7 +24,6 @@ declare module 'agentscript' {
     color: string;
     shape: string;
     size: number;
-    stepSize: number;
     world: {
         width: number;
         height: number;
