@@ -1,5 +1,5 @@
 import { ElasticModel } from "./elasticModel";
-import { CONFIG } from "./particleTypes";
+import { CONFIG, updateConfig } from "./config";
 
 /**
  * Main application controller that orchestrates the UI and physics simulation.
@@ -12,11 +12,6 @@ class ElasticBrownianApp {
   private lastStatsUpdate = 0;
 
   // UI State Management
-  private uiState = {
-    particleCount: CONFIG.SMALL_PARTICLES.count, // Now 2000
-    particleTemperature: CONFIG.SMALL_PARTICLES.temperature, // Now 0.5
-    worldSize: CONFIG.PHYSICS.worldSize
-  };
 
   // UI elements
   private particleCountSlider!: HTMLInputElement;
@@ -61,13 +56,19 @@ class ElasticBrownianApp {
     } else {
       this.particleCountSlider = particleCountSlider as HTMLInputElement;
 
-      this.particleCountSlider.value = this.uiState.particleCount.toString();
+      this.particleCountSlider.value = CONFIG.SMALL_PARTICLES.count.toString();
       this.particleCountSlider.addEventListener("input", e => {
         const count = parseInt((e.target as HTMLInputElement).value);
-        this.uiState.particleCount = count;
+
+        updateConfig({
+          smallParticles: {
+            count
+          }
+        });
+
         this.updateElementTextContent(this.particleCountValue, count.toString());
         // reset simulation with new particle count
-        this.model.resetSimulation(count, this.uiState.particleTemperature);
+        this.model.resetSimulation();
       });
     }
 
@@ -76,7 +77,10 @@ class ElasticBrownianApp {
     } else {
       this.particleCountValue = particleCountValue as HTMLElement;
 
-      this.updateElementTextContent(this.particleCountValue, this.uiState.particleCount.toString());
+      this.updateElementTextContent(
+        this.particleCountValue,
+        CONFIG.SMALL_PARTICLES.count.toString()
+      );
     }
 
     if (!particleTemperatureSlider) {
@@ -84,12 +88,18 @@ class ElasticBrownianApp {
     } else {
       this.particleTemperatureSlider = particleTemperatureSlider as HTMLInputElement;
 
-      this.particleTemperatureSlider.value = this.uiState.particleTemperature.toString();
+      this.particleTemperatureSlider.value = CONFIG.SMALL_PARTICLES.temperature.toString();
       this.particleTemperatureSlider.addEventListener("input", e => {
         const temperature = parseFloat((e.target as HTMLInputElement).value);
-        this.uiState.particleTemperature = temperature;
+
+        updateConfig({
+          smallParticles: {
+            temperature
+          }
+        });
+
         this.updateElementTextContent(this.particleTemperatureValue, temperature.toFixed(1));
-        this.model.updateParticleTemperature(temperature);
+        this.model.updateParticleTemperature();
       });
     }
 
@@ -102,7 +112,7 @@ class ElasticBrownianApp {
 
       this.updateElementTextContent(
         this.particleTemperatureValue,
-        this.uiState.particleTemperature.toFixed(1)
+        CONFIG.SMALL_PARTICLES.temperature.toFixed(1)
       );
     }
 
@@ -111,10 +121,16 @@ class ElasticBrownianApp {
     } else {
       this.worldSizeSlider = worldSizeSlider as HTMLInputElement;
 
-      this.worldSizeSlider.value = this.uiState.worldSize.toString();
+      this.worldSizeSlider.value = CONFIG.PHYSICS.worldSize.toString();
       this.worldSizeSlider.addEventListener("input", e => {
         const size = parseInt((e.target as HTMLInputElement).value);
-        this.uiState.worldSize = size;
+
+        updateConfig({
+          physics: {
+            worldSize: size
+          }
+        });
+
         this.updateElementTextContent(this.worldSizeValue, size.toString());
         this.model.updateWorldSize(size);
       });
@@ -125,7 +141,7 @@ class ElasticBrownianApp {
     } else {
       this.worldSizeValue = worldSizeValue as HTMLElement;
 
-      this.updateElementTextContent(this.worldSizeValue, this.uiState.worldSize.toString());
+      this.updateElementTextContent(this.worldSizeValue, CONFIG.PHYSICS.worldSize.toString());
     }
 
     if (!resetBtn) {
@@ -134,14 +150,14 @@ class ElasticBrownianApp {
       this.resetBtn = resetBtn as HTMLButtonElement;
 
       this.resetBtn.addEventListener("click", () => {
-        this.model.resetSimulation(this.uiState.particleCount, this.uiState.particleTemperature);
-
         // reset UI elements - only essential ones
         this.updateElementTextContent(this.ticksValue, "0");
         this.updateElementTextContent(this.collisionCount, "0");
         this.updateElementTextContent(this.velocityValue, "0.00");
         this.updateElementTextContent(this.velocityDecayTime, "N/A");
         this.updateElementTextContent(this.velocityDataPoints, "0");
+
+        this.model.resetSimulation();
 
         this.updateElementTextContent(this.brownianIndicator, "Initializing...", indicator => {
           indicator.classList.remove("positive", "negative");
@@ -204,10 +220,10 @@ class ElasticBrownianApp {
 
   private initializeModel() {
     this.model = new ElasticModel({
-      minX: -this.uiState.worldSize,
-      maxX: this.uiState.worldSize,
-      minY: -this.uiState.worldSize,
-      maxY: this.uiState.worldSize
+      minX: -CONFIG.PHYSICS.worldSize,
+      maxX: CONFIG.PHYSICS.worldSize,
+      minY: -CONFIG.PHYSICS.worldSize,
+      maxY: CONFIG.PHYSICS.worldSize
     });
     this.model.startup();
   }
@@ -304,10 +320,6 @@ class ElasticBrownianApp {
 
   public getStatistics() {
     return this.model.getStatistics();
-  }
-
-  public getCurrentUIState() {
-    return { ...this.uiState };
   }
 }
 

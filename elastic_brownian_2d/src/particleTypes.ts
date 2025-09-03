@@ -1,4 +1,5 @@
 import { Turtle } from "agentscript";
+import { CONFIG } from "./config";
 
 export interface ElasticParticle extends Turtle {
   mass: number;
@@ -24,36 +25,60 @@ export interface LargeParticleState {
   lastCollisionTick: number;
 }
 
-// Gaussian random number generator using Box-Muller transform
-// Returns normally distributed random number with mean=0, std=1
-let spare: number | null = null;
-export function gaussianRandom(): number {
-  if (spare !== null) {
-    const result = spare;
-    spare = null;
-    return result;
-  }
+/**
+ * Generates random numbers with Gaussian (normal) distribution
+ *
+ * Uses Box-Muller transform to convert uniform random numbers into normal distribution
+ * mean = 0, standard deviation = 1 (standard normal distribution)
+ *
+ * Efficient: generates two values per calculation, caches one for next call
+ *
+ * @returns random number from standard normal distribution (mean=0, std=1)
+ */
+export const gaussianRandom = (() => {
+  let spare: number | null = null;
 
-  // Box-Muller transform generates two independent standard normal variates
-  const u = Math.random();
-  const v = Math.random();
-  const magnitude = Math.sqrt(-2 * Math.log(u));
-  const angle = 2 * Math.PI * v;
+  return function (): number {
+    if (spare !== null) {
+      const result = spare;
+      spare = null;
+      return result;
+    }
 
-  spare = magnitude * Math.sin(angle);
-  return magnitude * Math.cos(angle);
-}
+    // Box-Muller transform generates two independent standard normal variates
+    const u = Math.random();
+    const v = Math.random();
+    const magnitude = Math.sqrt(-2 * Math.log(u));
+    const angle = 2 * Math.PI * v;
 
-// Maxwell-Boltzmann velocity distribution for 2D thermal particles
-// In 2D: each velocity component follows Gaussian distribution with σ = √(kT/m)
+    spare = magnitude * Math.sin(angle);
+    return magnitude * Math.cos(angle);
+  };
+})();
+
+/* Maxwell-Boltzmann velocity distribution for 2D thermal particles
+ *
+ * Creates realistic thermal velocities: at temperature T, particles naturally distribute
+ * with some slow, many medium, few very fast.
+ *
+ * Formula: each velocity component follows Gaussian distribution with  σ = √(kT/m)
+ * where:
+ *   - k = Boltzmann constant (here normalized to 1 for simple physics)
+ *   - T = temperature (higher = more agitated particles, faster average speeds)
+ *   - m = particle mass (heavier particles move slower at same temperature)
+ *   - σ = standard deviation (velocity spread - how much velocities vary around the average)
+ *
+ * Result: small particles get realistic thermal motion that creates brownian motion
+ * when they bombard the big particle through elastic collisions
+ */
 export function maxwellBoltzmannVelocity2D(
   temperature: number,
   mass: number
 ): { vx: number; vy: number } {
-  // Standard deviation for each velocity component in 2D
+  // standard deviation for each velocity component in 2D
   const sigma = Math.sqrt(temperature / mass);
 
-  // Generate two independent Gaussian-distributed velocity components
+  // generate two independent Gaussian-distributed velocity components
   const vx = sigma * gaussianRandom();
   const vy = sigma * gaussianRandom();
 
@@ -145,58 +170,4 @@ export function calculateDynamicExpectedValues(
     expectedEquipartition: (2 * kT_eff) / CONFIG.LARGE_PARTICLE.mass, // ⟨v²⟩ = 2*kT/M in 2D
     expectedDecayTime: CONFIG.LARGE_PARTICLE.mass / gamma_eff // τ = M/γ
   };
-}
-
-export const CONFIG = {
-  LARGE_PARTICLE: {
-    mass: 30, // Increased mass ratio 30:1 for better Brownian motion visibility
-    radius: 8, // Slightly larger size for better visibility and collision cross-section
-    initialPosition: { x: 0, y: 0 }, // center of the world
-    color: "red"
-  } as const,
-  SMALL_PARTICLES: {
-    count: 1200, // Reduced from 2000 for better autocorrelation behavior
-    mass: 1 as const,
-    radius: 1.5 as const, // Slightly larger for better collision detection
-    temperature: 0.5, // Lower temperature for gentler thermal motion
-    color: "lightblue" as const
-  },
-  PHYSICS: {
-    worldSize: 150, // Smaller world for higher effective density
-    timeStep: 1 as const, // simulation time unit
-    collisionBuffer: 0.2 as const, // Smaller buffer for precise physics
-    minCollisionInterval: 1 as const // minimum interval to prevent sticking
-  },
-  LANGEVIN: {
-    // DISABLED - Brownian motion emerges naturally from collisions
-    gamma: 0, // Not used when disabled
-    kT: 0, // Not used when disabled
-    enabled: false // DISABLED for emergent Brownian motion
-  },
-  ANALYSIS: {
-    msdUpdateInterval: 2, // Frequent MSD updates for better resolution
-    historyLength: 20000, // Longer history for better statistics
-    chartUpdateInterval: 5 // Faster chart updates for real-time feedback
-  } as const
-};
-
-export function updateConfig(
-  newConfig: Partial<{
-    smallParticles: Partial<Pick<typeof CONFIG.SMALL_PARTICLES, "count" | "temperature">>;
-    physics: Partial<Pick<typeof CONFIG.PHYSICS, "worldSize">>;
-  }>
-) {
-  if (newConfig.smallParticles) {
-    CONFIG.SMALL_PARTICLES = {
-      ...CONFIG.SMALL_PARTICLES,
-      count: newConfig.smallParticles.count ?? CONFIG.SMALL_PARTICLES.count,
-      temperature: newConfig.smallParticles.temperature ?? CONFIG.SMALL_PARTICLES.temperature
-    };
-  }
-  if (newConfig.physics) {
-    CONFIG.PHYSICS = {
-      ...CONFIG.PHYSICS,
-      worldSize: newConfig.physics.worldSize ?? CONFIG.PHYSICS.worldSize
-    };
-  }
 }
