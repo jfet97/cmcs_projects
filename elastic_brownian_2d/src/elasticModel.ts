@@ -5,6 +5,10 @@ import { BrownianAnalysis } from "./brownianAnalysis";
 import { Simulation } from "./simulation";
 import { CONFIG } from "./config";
 
+/**
+ * Main physics simulation controller for elastic collision brownian motion.
+ * Manages particles, world boundaries, collision detection, and canvas rendering.
+ */
 export class ElasticModel extends Model {
   largeParticle!: ElasticParticle;
   largeParticleState!: LargeParticleState;
