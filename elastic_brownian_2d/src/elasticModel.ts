@@ -45,14 +45,12 @@ export class ElasticModel extends Model {
       this.largeParticle = turtle;
     });
 
-    // TODO (a che serve ?)
     // init large particle state tracking
     this.largeParticleState = {
       x0: this.largeParticle.x,
       y0: this.largeParticle.y,
       positionHistory: [],
       collisionCount: 0,
-
       lastCollisionTick: -CONFIG.PHYSICS.minCollisionInterval
     };
   }
@@ -133,6 +131,7 @@ export class ElasticModel extends Model {
         this.setupSmallParticles();
         break;
       }
+
       case "count": {
         // save current large particle state if it exists
         const savedPosition = this.largeParticle
@@ -183,14 +182,14 @@ export class ElasticModel extends Model {
     this.ticks = 0;
   }
 
-  public updateWorldSize(newSize: number) {
-    this.world.minX = -newSize;
-    this.world.maxX = newSize;
-    this.world.minY = -newSize;
-    this.world.maxY = newSize;
+  public updateWorldSize() {
+    this.world.minX = -CONFIG.PHYSICS.worldSize;
+    this.world.maxX = CONFIG.PHYSICS.worldSize;
+    this.world.minY = -CONFIG.PHYSICS.worldSize;
+    this.world.maxY = CONFIG.PHYSICS.worldSize;
 
     this.simulation.updateCanvasVisualSize(this.world);
-    this.resetSimulation("count");
+    this.resetSimulation("count"); // like a soft reset
   }
 
   public getStatistics() {

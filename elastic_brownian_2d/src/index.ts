@@ -132,7 +132,7 @@ class ElasticBrownianApp {
         });
 
         this.updateElementTextContent(this.worldSizeValue, size.toString());
-        this.model.updateWorldSize(size);
+        this.model.updateWorldSize();
       });
     }
 
