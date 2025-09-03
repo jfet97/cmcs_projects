@@ -28,7 +28,6 @@ export class ElasticModel extends Model {
 
   private setupLargeParticle() {
     // a single large particle at center
-    console.log({ oi: JSON.stringify(this.turtles) });
 
     this.turtles.create(1, (turtle: ElasticParticle) => {
       turtle.setxy(
@@ -46,8 +45,6 @@ export class ElasticModel extends Model {
 
       this.largeParticle = turtle;
     });
-
-    console.log("here");
 
     // init large particle state tracking
     this.largeParticleState = {
@@ -191,7 +188,7 @@ export class ElasticModel extends Model {
   }
 
   public updateWorldSize() {
-    this.turtles.clear();
+    // this.turtles.clear();
 
     this.world.minX = -CONFIG.PHYSICS.worldSize;
     this.world.maxX = CONFIG.PHYSICS.worldSize;

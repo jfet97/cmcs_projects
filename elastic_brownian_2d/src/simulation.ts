@@ -64,12 +64,6 @@ export class Simulation {
 
     // update pixelsPerUnit to account for devicePixelRatio in rendering
     this.pixelsPerUnit = this.devicePixelRatio;
-
-    console.log({
-      pixelsPerUnit: this.pixelsPerUnit,
-      canvasWidth: this.canvas.width,
-      canvasHeight: this.canvas.height
-    });
   }
 
   public drawParticles() {
