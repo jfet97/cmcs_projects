@@ -28,6 +28,8 @@ export class ElasticModel extends Model {
 
   private setupLargeParticle() {
     // a single large particle at center
+    console.log({ oi: JSON.stringify(this.turtles) });
+
     this.turtles.create(1, (turtle: ElasticParticle) => {
       turtle.setxy(
         CONFIG.LARGE_PARTICLE.initialPosition.x,
@@ -44,6 +46,8 @@ export class ElasticModel extends Model {
 
       this.largeParticle = turtle;
     });
+
+    console.log("here");
 
     // init large particle state tracking
     this.largeParticleState = {
@@ -123,7 +127,7 @@ export class ElasticModel extends Model {
   }
 
   // public methods for external control
-  public resetSimulation(update: "temperature" | "count" | "all") {
+  public resetSimulation(update: "temperature" | "count" | "all" | "nothing") {
     switch (update) {
       case "all": {
         this.turtles.clear();
@@ -171,6 +175,10 @@ export class ElasticModel extends Model {
         });
         break;
       }
+
+      case "nothing": {
+        break;
+      }
     }
 
     // simply reset analysis
@@ -183,13 +191,20 @@ export class ElasticModel extends Model {
   }
 
   public updateWorldSize() {
+    this.turtles.clear();
+
     this.world.minX = -CONFIG.PHYSICS.worldSize;
     this.world.maxX = CONFIG.PHYSICS.worldSize;
     this.world.minY = -CONFIG.PHYSICS.worldSize;
     this.world.maxY = CONFIG.PHYSICS.worldSize;
 
+    (this.world as any).minXcor = this.world.minX - 0.5;
+    (this.world as any).maxXcor = this.world.maxX + 0.5;
+    (this.world as any).minYcor = this.world.minY - 0.5;
+    (this.world as any).maxYcor = this.world.maxY + 0.5;
+
     this.simulation.updateCanvasVisualSize(this.world);
-    this.resetSimulation("count"); // like a soft reset
+    this.resetSimulation("count");
   }
 
   public getStatistics() {

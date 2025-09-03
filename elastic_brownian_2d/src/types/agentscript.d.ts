@@ -36,7 +36,7 @@ declare module 'agentscript' {
 
     turtles: Turtles;
     ticks: number;
-    world: WorldBounds;
+    world: World;
 
     startup(strategy: "center" | "random"): void;
     step(): void;
@@ -48,5 +48,12 @@ declare module 'agentscript' {
     start?(): void;
     draw?(): void;
     render?(): void;
+
+    setWorld(): void;
+
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
   }
 }
