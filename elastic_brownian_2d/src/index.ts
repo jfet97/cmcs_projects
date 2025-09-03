@@ -68,7 +68,7 @@ class ElasticBrownianApp {
 
         this.updateElementTextContent(this.particleCountValue, count.toString());
         // reset simulation with new particle count
-        this.model.resetSimulation();
+        this.model.resetSimulation("count");
       });
     }
 
@@ -99,7 +99,7 @@ class ElasticBrownianApp {
         });
 
         this.updateElementTextContent(this.particleTemperatureValue, temperature.toFixed(1));
-        this.model.updateParticleTemperature();
+        this.model.resetSimulation("temperature");
       });
     }
 
@@ -157,7 +157,7 @@ class ElasticBrownianApp {
         this.updateElementTextContent(this.velocityDecayTime, "N/A");
         this.updateElementTextContent(this.velocityDataPoints, "0");
 
-        this.model.resetSimulation();
+        this.model.resetSimulation("all");
 
         this.updateElementTextContent(this.brownianIndicator, "Initializing...", indicator => {
           indicator.classList.remove("positive", "negative");

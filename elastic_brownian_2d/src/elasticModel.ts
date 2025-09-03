@@ -18,9 +18,11 @@ export class ElasticModel extends Model {
   override startup() {
     this.setupLargeParticle();
     this.setupSmallParticles();
-    this.initializeAnalysis();
-    this.initializeVisualization();
-    // Initialize canvas size coordinated with world size
+
+    this.analysis = new BrownianAnalysis(this.largeParticle, this.largeParticleState);
+    this.simulation = new Simulation(this.turtles, this.largeParticle, this.world);
+
+    // initialize canvas size coordinated with world size
     this.simulation.updateCanvasVisualSize(this.world);
   }
 
@@ -95,14 +97,6 @@ export class ElasticModel extends Model {
     });
   }
 
-  private initializeAnalysis() {
-    this.analysis = new BrownianAnalysis(this.largeParticle, this.largeParticleState);
-  }
-
-  private initializeVisualization() {
-    this.simulation = new Simulation(this.turtles, this.largeParticle, this.world);
-  }
-
   override step() {
     if (!this.turtles || this.turtles.length === 0) {
       return;
@@ -131,31 +125,54 @@ export class ElasticModel extends Model {
   }
 
   // public methods for external control
-  public resetSimulation() {
-    // save current large particle state if it exists
-    const currentLargeParticle = this.largeParticle;
-    const savedPosition = currentLargeParticle
-      ? { x: currentLargeParticle.x, y: currentLargeParticle.y }
-      : null;
-    const savedVelocity = currentLargeParticle
-      ? { vx: currentLargeParticle.vx, vy: currentLargeParticle.vy }
-      : null;
+  public resetSimulation(update: "temperature" | "count" | "all") {
+    switch (update) {
+      case "all": {
+        this.turtles.clear();
+        this.setupLargeParticle();
+        this.setupSmallParticles();
+        break;
+      }
+      case "count": {
+        // save current large particle state if it exists
+        const savedPosition = this.largeParticle
+          ? { x: this.largeParticle.x, y: this.largeParticle.y }
+          : null;
+        const savedVelocity = this.largeParticle
+          ? { vx: this.largeParticle.vx, vy: this.largeParticle.vy }
+          : null;
 
-    // clear all turtles
-    this.turtles.clear();
+        this.turtles.clear();
 
-    // create large particle
-    this.setupLargeParticle();
+        this.setupLargeParticle();
 
-    // restore position and velocity if we had a previous large particle
-    if (savedPosition && savedVelocity) {
-      this.largeParticle.setxy(savedPosition.x, savedPosition.y);
-      this.largeParticle.vx = savedVelocity.vx;
-      this.largeParticle.vy = savedVelocity.vy;
+        // restore position and velocity if we had a previous large particle
+        if (savedPosition && savedVelocity) {
+          this.largeParticle.setxy(savedPosition.x, savedPosition.y);
+          this.largeParticle.vx = savedVelocity.vx;
+          this.largeParticle.vy = savedVelocity.vy;
+        }
+
+        this.setupSmallParticles();
+
+        break;
+      }
+
+      case "temperature": {
+        // re-initialize all small particles with new Maxwell-Boltzmann distribution
+        this.turtles.ask((turtle: ElasticParticle) => {
+          if (!turtle.isLarge) {
+            const thermalVelocity = maxwellBoltzmannVelocity2D(
+              CONFIG.SMALL_PARTICLES.temperature,
+              turtle.mass
+            );
+            turtle.vx = thermalVelocity.vx;
+            turtle.vy = thermalVelocity.vy;
+          }
+        });
+        break;
+      }
     }
-
-    // create small particles with new count if provided
-    this.setupSmallParticles();
 
     // simply reset analysis
     this.analysis.reset();
@@ -166,20 +183,6 @@ export class ElasticModel extends Model {
     this.ticks = 0;
   }
 
-  public updateParticleTemperature() {
-    // re-initialize all small particles with new Maxwell-Boltzmann distribution
-    this.turtles.ask((turtle: ElasticParticle) => {
-      if (!turtle.isLarge) {
-        const thermalVelocity = maxwellBoltzmannVelocity2D(
-          CONFIG.SMALL_PARTICLES.temperature,
-          turtle.mass
-        );
-        turtle.vx = thermalVelocity.vx;
-        turtle.vy = thermalVelocity.vy;
-      }
-    });
-  }
-
   public updateWorldSize(newSize: number) {
     this.world.minX = -newSize;
     this.world.maxX = newSize;
@@ -187,7 +190,7 @@ export class ElasticModel extends Model {
     this.world.maxY = newSize;
 
     this.simulation.updateCanvasVisualSize(this.world);
-    this.resetSimulation();
+    this.resetSimulation("count");
   }
 
   public getStatistics() {
