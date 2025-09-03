@@ -204,7 +204,7 @@ export class ElasticModel extends Model {
     (this.world as any).maxYcor = this.world.maxY + 0.5;
 
     this.simulation.updateCanvasVisualSize(this.world);
-    this.resetSimulation("count");
+    this.resetSimulation("nothing");
   }
 
   public getStatistics() {
