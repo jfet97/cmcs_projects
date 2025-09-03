@@ -1,5 +1,6 @@
 import { Model, Turtles } from "agentscript";
-import { ElasticParticle, CONFIG } from "./particleTypes";
+import { ElasticParticle } from "./particleTypes";
+import { CONFIG } from "./config";
 
 function getAllSmallParticles(turtles: Turtles): ElasticParticle[] {
   const smallParticles: ElasticParticle[] = [];

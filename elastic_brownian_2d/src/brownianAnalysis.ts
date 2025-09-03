@@ -1,5 +1,6 @@
 import { Chart, registerables } from "chart.js";
-import { ElasticParticle, LargeParticleState, CONFIG } from "./particleTypes";
+import { ElasticParticle, LargeParticleState } from "./particleTypes";
+import { CONFIG } from "./config";
 
 Chart.register(...registerables);
 

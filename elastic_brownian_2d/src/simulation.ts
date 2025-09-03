@@ -1,5 +1,6 @@
 import { Turtles } from "agentscript";
-import { ElasticParticle, CONFIG } from "./particleTypes";
+import { ElasticParticle } from "./particleTypes";
+import { CONFIG } from "./config";
 
 export class Simulation {
   private canvas!: HTMLCanvasElement;

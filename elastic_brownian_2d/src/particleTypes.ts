@@ -21,7 +21,7 @@ export interface LargeParticleState {
   y0: number; // initial position
   positionHistory: Array<{ x: number; y: number; t: number }>;
   collisionCount: number;
-  totalEnergyReceived: number;
+
   lastCollisionTick: number;
 }
 

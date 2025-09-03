@@ -50,7 +50,7 @@ export class ElasticModel extends Model {
       y0: this.largeParticle.y,
       positionHistory: [],
       collisionCount: 0,
-      totalEnergyReceived: 0,
+
       lastCollisionTick: -CONFIG.PHYSICS.minCollisionInterval
     };
   }
@@ -157,13 +157,9 @@ export class ElasticModel extends Model {
     // create small particles with new count if provided
     this.setupSmallParticles();
 
-    // apply preserved temperature
-    this.updateParticleTemperature();
-
-    // Update state - simply reset analysis
+    // simply reset analysis
     this.analysis.reset();
     this.largeParticleState.collisionCount = 0;
-    this.largeParticleState.totalEnergyReceived = 0;
     this.largeParticleState.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
 
     // reset tick counter so everything restarts from zero
