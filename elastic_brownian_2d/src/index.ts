@@ -1,8 +1,11 @@
 import { ElasticModel } from "./elasticModel";
 import { CONFIG } from "./particleTypes";
 
-// handles UI
-
+/**
+ * Main application controller that orchestrates the UI and physics simulation.
+ * Manages user interactions, displays real-time statistics, and coordinates
+ * the elastic collision-based Brownian motion simulation.
+ */
 class ElasticBrownianApp {
   private model!: ElasticModel;
   private isPaused = false;
