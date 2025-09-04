@@ -87,6 +87,37 @@ function getLargeParticle(turtles: Turtles): ElasticParticle | undefined {
   return largeParticle;
 }
 
+/**
+ * Performs a perfectly elastic collision between two particles using 2D hard sphere physics.
+ *
+ * This function implements the complete elastic collision pipeline:
+ * 1. Distance and overlap detection
+ * 2. Collision throttling to prevent rapid repeated collisions
+ * 3. Relative velocity analysis to skip separating particles
+ * 4. Conservation of momentum and energy calculations
+ * 5. Particle separation to prevent overlapping
+ *
+ * Physics Implementation:
+ * - Uses reduced mass formula for correct momentum transfer
+ * - Applies impulse along collision normal only (tangential velocities unchanged)
+ * - Perfectly elastic: kinetic energy is conserved
+ * - Handles particles of different masses correctly
+ *
+ * @param particle1 First particle in the collision
+ * @param particle2 Second particle in the collision
+ * @param currentTick Current simulation tick for collision throttling
+ * @returns true if collision occurred and was processed, false if collision was skipped
+ *
+ *
+ * Collision Conditions:
+ * - Particles must be overlapping: distance < (radius1 + radius2)
+ * - Collision throttling: minimum interval since last collision
+ * - Velocity check: particles must be approaching (not separating)
+ *
+ * Physics Formula:
+ * v1_new = ((m1-m2)*v1 + 2*m2*v2) / (m1+m2)  [along collision normal]
+ * v2_new = ((m2-m1)*v2 + 2*m1*v1) / (m1+m2)  [along collision normal]
+ */
 export function performElasticCollision(
   particle1: ElasticParticle,
   particle2: ElasticParticle,
@@ -140,7 +171,7 @@ export function performElasticCollision(
   const dv1_normal = v1_normal_new - v1_normal;
   const dv2_normal = v2_normal_new - v2_normal;
 
-  // apply velocity changes (pure physics - no artificial noise!)
+  // apply velocity changes
   particle1.vx += dv1_normal * nx;
   particle1.vy += dv1_normal * ny;
   particle2.vx += dv2_normal * nx;
