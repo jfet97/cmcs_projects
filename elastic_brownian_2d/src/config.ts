@@ -11,7 +11,7 @@ export const CONFIG = {
   } as const,
   SMALL_PARTICLES: {
     // high particle count creates dense thermal environment (reduced from 2000 for better autocorrelation)
-    count: 1200,
+    count: 1000,
     // unit mass provides simple reference for momentum calculations
     mass: 1 as const,
     // radius sized for reliable collision detection while maintaining performance

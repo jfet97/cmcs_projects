@@ -164,6 +164,7 @@ export function performElasticCollision(
   const v2_normal = particle2.vx * nx + particle2.vy * ny;
 
   // new normal velocities after elastic collision
+  // conserve momentum and energy
   const v1_normal_new = ((m1 - m2) * v1_normal + 2 * m2 * v2_normal) / totalMass;
   const v2_normal_new = ((m2 - m1) * v2_normal + 2 * m1 * v1_normal) / totalMass;
 
