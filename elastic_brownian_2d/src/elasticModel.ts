@@ -1,4 +1,4 @@
-import { Model, WorldBounds } from "agentscript";
+import { Model, SingleParticleState, WorldBounds } from "agentscript";
 import { ElasticParticle, LargeParticleState, maxwellBoltzmannVelocity2D } from "./particleTypes";
 import { handleAllCollisions, moveParticle } from "./elasticCollisions";
 import { BrownianAnalysis } from "./brownianAnalysis";
@@ -19,9 +19,9 @@ export class ElasticModel extends Model {
     super(worldBounds);
   }
 
-  override startup() {
-    this.setupLargeParticle();
-    this.setupSmallParticles();
+  override startup(prevState?: SingleParticleState[]) {
+    this.setupLargeParticle(prevState?.find(s => s.isLarge));
+    this.setupSmallParticles(prevState?.filter(s => !s.isLarge));
 
     this.analysis = new BrownianAnalysis(this.largeParticle, this.largeParticleState);
     this.simulation = new Simulation(this.turtles, this.largeParticle, this.world);
@@ -30,23 +30,29 @@ export class ElasticModel extends Model {
     this.simulation.updateCanvasVisualSize(this.world);
   }
 
-  private setupLargeParticle() {
+  private setupLargeParticle(prevState?: SingleParticleState) {
     // a single large particle at center
 
     this.turtles.create(1, (turtle: ElasticParticle) => {
-      turtle.setxy(
-        CONFIG.LARGE_PARTICLE.initialPosition.x,
-        CONFIG.LARGE_PARTICLE.initialPosition.y
-      );
+      if (prevState) {
+        turtle.setxy(prevState.x, prevState.y);
+        turtle.vx = prevState.vx;
+        turtle.vy = prevState.vy;
+      } else {
+        turtle.setxy(
+          CONFIG.LARGE_PARTICLE.initialPosition.x,
+          CONFIG.LARGE_PARTICLE.initialPosition.y
+        );
+        turtle.vx = 0;
+        turtle.vy = 0;
+      }
+
       turtle.mass = CONFIG.LARGE_PARTICLE.mass;
       turtle.size = CONFIG.LARGE_PARTICLE.radius;
       turtle.color = CONFIG.LARGE_PARTICLE.color;
       turtle.shape = "circle";
       turtle.isLarge = true;
-      turtle.vx = 0;
-      turtle.vy = 0;
       turtle.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
-
       this.largeParticle = turtle;
     });
 
@@ -60,12 +66,24 @@ export class ElasticModel extends Model {
     };
   }
 
-  private setupSmallParticles() {
+  private setupSmallParticles(prevStates?: SingleParticleState[]) {
     // a lot of small particles around the large particle
 
     // use only the updated config
     const { count } = CONFIG.SMALL_PARTICLES;
 
+    let useSavedState = false;
+    if (prevStates && prevStates.length !== count) {
+      console.error(
+        new Error(
+          `State length ${prevStates.length} does not match configured small particle count ${count}, ignoring saved state.`
+        )
+      );
+    } else if (prevStates) {
+      useSavedState = true;
+    }
+
+    let ctr = 0;
     this.turtles.create(count, (turtle: ElasticParticle) => {
       // random position avoiding the large particle - use world boundaries consistently
       // keep initial distance from large particle
@@ -73,30 +91,38 @@ export class ElasticModel extends Model {
       const worldWidth = this.world.maxX - this.world.minX;
       const worldHeight = this.world.maxY - this.world.minY;
 
-      let x, y, distance;
-      do {
-        x = (Math.random() - 0.5) * worldWidth * 0.8;
-        y = (Math.random() - 0.5) * worldHeight * 0.8;
-        distance = Math.sqrt(x * x + y * y);
-      } while (distance < CONFIG.LARGE_PARTICLE.radius * 3);
+      if (useSavedState && prevStates && prevStates[ctr]) {
+        turtle.setxy(prevStates[ctr].x, prevStates[ctr].y);
+        turtle.vx = prevStates[ctr].vx;
+        turtle.vy = prevStates[ctr].vy;
+      } else {
+        let x, y, distance;
+        do {
+          x = (Math.random() - 0.5) * worldWidth * 0.95;
+          y = (Math.random() - 0.5) * worldHeight * 0.95;
+          distance = Math.sqrt(x * x + y * y);
+        } while (distance < CONFIG.LARGE_PARTICLE.radius * 3);
 
-      turtle.setxy(x, y);
+        turtle.setxy(x, y);
+
+        // initialize velocity using Maxwell-Boltzmann distribution for thermal equilibrium
+        // this provides realistic thermal motion without artificial randomness during simulation
+        const thermalVelocity = maxwellBoltzmannVelocity2D(
+          CONFIG.SMALL_PARTICLES.temperature,
+          CONFIG.SMALL_PARTICLES.mass
+        );
+        turtle.vx = thermalVelocity.vx;
+        turtle.vy = thermalVelocity.vy;
+      }
+
       turtle.mass = CONFIG.SMALL_PARTICLES.mass;
       turtle.size = CONFIG.SMALL_PARTICLES.radius;
       turtle.color = CONFIG.SMALL_PARTICLES.color;
       turtle.shape = "circle";
       turtle.isLarge = false;
-
-      // initialize velocity using Maxwell-Boltzmann distribution for thermal equilibrium
-      // this provides realistic thermal motion without artificial randomness during simulation
-      const thermalVelocity = maxwellBoltzmannVelocity2D(
-        CONFIG.SMALL_PARTICLES.temperature,
-        CONFIG.SMALL_PARTICLES.mass
-      );
-      turtle.vx = thermalVelocity.vx;
-      turtle.vy = thermalVelocity.vy;
-
       turtle.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
+
+      ctr++;
     });
   }
 
@@ -203,31 +229,6 @@ export class ElasticModel extends Model {
       });
     });
     return toRet;
-  }
-
-  public setState(state: { x: number; y: number; vx: number; vy: number; isLarge: boolean }[]) {
-    if (state.length !== this.turtles.length) {
-      console.error(new Error("State length does not match number of particles"));
-    } else {
-      const largeState = state.find(s => s.isLarge);
-      const others = state.filter(s => !s.isLarge);
-      let ctr = 0;
-
-      console.log(others.length);
-
-      this.turtles.ask((turtle: ElasticParticle) => {
-        if (turtle.isLarge && largeState) {
-          turtle.setxy(largeState.x, largeState.y);
-          turtle.vx = largeState.vx;
-          turtle.vy = largeState.vy;
-        } else {
-          turtle.setxy(others[ctr].x, others[ctr].y);
-          turtle.vx = others[ctr].vx;
-          turtle.vy = others[ctr].vy;
-          ctr++;
-        }
-      });
-    }
   }
 
   public getStatistics() {

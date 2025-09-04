@@ -1,4 +1,12 @@
 declare module 'agentscript' {
+  export interface SingleParticleState {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    isLarge: boolean;
+  }
+
   export interface WorldBounds {
     minX: number;
     maxX: number;
@@ -38,7 +46,7 @@ declare module 'agentscript' {
     ticks: number;
     world: World;
 
-    startup(strategy: "center" | "random"): void;
+    startup(prevState?: SingleParticleState[]): void;
     step(): void;
   }
 

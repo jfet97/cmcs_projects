@@ -140,8 +140,7 @@ class ElasticBrownianApp {
           minY: -CONFIG.PHYSICS.worldSize,
           maxY: CONFIG.PHYSICS.worldSize
         });
-        this.model.startup();
-        this.model.setState(state);
+        this.model.startup(state);
       });
     }
 
