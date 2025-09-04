@@ -191,21 +191,43 @@ export class ElasticModel extends Model {
     this.ticks = 0;
   }
 
-  public updateWorldSize() {
-    // this.turtles.clear();
+  public getState() {
+    const toRet: { x: number; y: number; vx: number; vy: number; isLarge: boolean }[] = [];
+    this.turtles.ask((turtle: ElasticParticle) => {
+      toRet.push({
+        x: turtle.x,
+        y: turtle.y,
+        vx: turtle.vx,
+        vy: turtle.vy,
+        isLarge: turtle.isLarge
+      });
+    });
+    return toRet;
+  }
 
-    this.world.minX = -CONFIG.PHYSICS.worldSize;
-    this.world.maxX = CONFIG.PHYSICS.worldSize;
-    this.world.minY = -CONFIG.PHYSICS.worldSize;
-    this.world.maxY = CONFIG.PHYSICS.worldSize;
+  public setState(state: { x: number; y: number; vx: number; vy: number; isLarge: boolean }[]) {
+    if (state.length !== this.turtles.length) {
+      console.error(new Error("State length does not match number of particles"));
+    } else {
+      const largeState = state.find(s => s.isLarge);
+      const others = state.filter(s => !s.isLarge);
+      let ctr = 0;
 
-    (this.world as any).minXcor = this.world.minX - 0.5;
-    (this.world as any).maxXcor = this.world.maxX + 0.5;
-    (this.world as any).minYcor = this.world.minY - 0.5;
-    (this.world as any).maxYcor = this.world.maxY + 0.5;
+      console.log(others.length);
 
-    this.simulation.updateCanvasVisualSize(this.world);
-    this.resetSimulation("nothing");
+      this.turtles.ask((turtle: ElasticParticle) => {
+        if (turtle.isLarge && largeState) {
+          turtle.setxy(largeState.x, largeState.y);
+          turtle.vx = largeState.vx;
+          turtle.vy = largeState.vy;
+        } else {
+          turtle.setxy(others[ctr].x, others[ctr].y);
+          turtle.vx = others[ctr].vx;
+          turtle.vy = others[ctr].vy;
+          ctr++;
+        }
+      });
+    }
   }
 
   public getStatistics() {
@@ -217,5 +239,11 @@ export class ElasticModel extends Model {
       velocity: averageVelocity,
       smallParticleCount: this.turtles.length - 1 // exclude large particle
     };
+  }
+
+  public destroy() {
+    if (this.analysis) {
+      this.analysis.destroy();
+    }
   }
 }

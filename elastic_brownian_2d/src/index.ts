@@ -132,7 +132,16 @@ class ElasticBrownianApp {
         });
 
         this.updateElementTextContent(this.worldSizeValue, size.toString());
-        this.model.updateWorldSize();
+        const state = this.model.getState();
+        this.model.destroy();
+        this.model = new ElasticModel({
+          minX: -CONFIG.PHYSICS.worldSize,
+          maxX: CONFIG.PHYSICS.worldSize,
+          minY: -CONFIG.PHYSICS.worldSize,
+          maxY: CONFIG.PHYSICS.worldSize
+        });
+        this.model.startup();
+        this.model.setState(state);
       });
     }
 

@@ -175,6 +175,12 @@ export class BrownianAnalysis {
     this.velocityChart?.resize();
   }
 
+  public destroy() {
+    if (this.velocityChart) {
+      this.velocityChart.destroy();
+    }
+  }
+
   /**
    * 📊 ESSENTIAL STATISTICS (Only what you need!)
    */
