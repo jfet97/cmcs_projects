@@ -217,7 +217,7 @@ export function handleAllCollisions(turtles: Turtles, currentTick: number): numb
         // avoid duplicate checks using consistent key generation
         const key1 = spatialHash.hash(particle.x, particle.y);
         const key2 = spatialHash.hash(other.x, other.y);
-        const pairKey = key1 < key2 ? `${key1}${key2}` : `${key2}${key1}`;
+        const pairKey = key1 < key2 ? `${key1}|${key2}` : `${key2}|${key1}`;
 
         if (!checkedPairs.has(pairKey)) {
           checkedPairs.add(pairKey);
