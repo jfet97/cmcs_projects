@@ -1,7 +1,15 @@
-import { Turtles } from "agentscript";
+import { Turtles, WorldBounds } from "agentscript";
 import { ElasticParticle } from "./particleTypes";
 import { CONFIG } from "./config";
 
+/**
+ * Canvas rendering system for the elastic Brownian motion simulation.
+ * Handles coordinate transformation, particle visualization, and high-DPI display support.
+ *
+ * Transforms world coordinates (physics space with origin at center, Y-axis up) to canvas coordinates.
+ * Renders large red particle and small blue thermal particles with physics-accurate sizes.
+ * Provides dynamic canvas sizing and device pixel ratio scaling for crisp display.
+ */
 export class Simulation {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
@@ -12,17 +20,12 @@ export class Simulation {
   constructor(
     private turtles: Turtles,
     private largeParticle: ElasticParticle,
-    worldBounds: { minX: number; maxX: number; minY: number; maxY: number }
+    worldBounds: WorldBounds
   ) {
     this.initializeCanvas(worldBounds);
   }
 
-  private initializeCanvas(worldBounds: {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-  }) {
+  private initializeCanvas(worldBounds: WorldBounds) {
     this.canvas = document.getElementById("simulation-canvas") as HTMLCanvasElement;
     if (!this.canvas) {
       throw new Error("Cannot find simulation canvas");
