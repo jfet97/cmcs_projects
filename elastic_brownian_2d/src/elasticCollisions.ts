@@ -46,6 +46,25 @@ class SpatialHash {
 
     return nearby;
   }
+
+  getNearbyLarge(particle: ElasticParticle): ElasticParticle[] {
+    const nearby: ElasticParticle[] = [];
+    const gridX = Math.floor(particle.x / this.cellSize);
+    const gridY = Math.floor(particle.y / this.cellSize);
+
+    // check 9x9 neighborhood for large particle (radius 8 + 1.5 = 9.5, cell size 3, need 4 cells radius)
+    for (let dx = -4; dx <= 4; dx++) {
+      for (let dy = -4; dy <= 4; dy++) {
+        const key = `${gridX + dx},${gridY + dy}`;
+        const particles = this.grid.get(key);
+        if (particles) {
+          nearby.push(...particles);
+        }
+      }
+    }
+
+    return nearby;
+  }
 }
 
 function getAllSmallParticles(turtles: Turtles): ElasticParticle[] {
@@ -189,8 +208,8 @@ export function handleAllCollisions(turtles: Turtles, currentTick: number): numb
 
   if (!largeParticle) return 0;
 
-  // spatial hash with cell size = largest particle radius * 2
-  const spatialHash = new SpatialHash(CONFIG.LARGE_PARTICLE.radius * 2);
+  // spatial hash with cell size = small particle radius * 2
+  const spatialHash = new SpatialHash(CONFIG.SMALL_PARTICLES.radius * 2);
 
   // insert all particles into spatial hash
   spatialHash.insert(largeParticle);
@@ -199,7 +218,7 @@ export function handleAllCollisions(turtles: Turtles, currentTick: number): numb
   }
 
   // 1. handle collisions between large particle and small particles using spatial hash
-  const nearbyLarge = spatialHash.getNearby(largeParticle);
+  const nearbyLarge = spatialHash.getNearbyLarge(largeParticle);
   for (const particle of nearbyLarge) {
     if (!particle.isLarge && particle !== largeParticle) {
       if (performElasticCollision(particle, largeParticle, currentTick)) {
