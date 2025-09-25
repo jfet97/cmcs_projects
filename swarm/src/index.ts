@@ -12,6 +12,7 @@ let nValue: HTMLElement;
 let etaSlider: HTMLInputElement;
 let etaValue: HTMLElement;
 let orderValue: HTMLElement;
+let singleAgentCheckbox: HTMLInputElement;
 
 function initializeUI() {
   // get UI elements
@@ -20,8 +21,9 @@ function initializeUI() {
   etaSlider = document.getElementById("eta-slider") as HTMLInputElement;
   etaValue = document.getElementById("eta-value") as HTMLElement;
   orderValue = document.getElementById("order-value") as HTMLElement;
+  singleAgentCheckbox = document.getElementById("single-agent") as HTMLInputElement;
 
-  if (!nSlider || !nValue || !etaSlider || !etaValue || !orderValue) {
+  if (!nSlider || !nValue || !etaSlider || !etaValue || !orderValue || !singleAgentCheckbox) {
     throw new Error("Required UI elements not found");
   }
 
@@ -36,6 +38,20 @@ function initializeUI() {
     const newEta = parseFloat(etaSlider.value);
     etaValue.textContent = newEta.toFixed(2);
     model.setNoiseLevel(newEta);
+  });
+
+  singleAgentCheckbox.addEventListener("change", () => {
+    const singleMode = singleAgentCheckbox.checked;
+    const targetAgents = singleMode ? 1 : parseInt(nSlider.value);
+    model.setNumAgents(targetAgents);
+
+    // disable/enable the slider based on checkbox state
+    nSlider.disabled = singleMode;
+    if (singleMode) {
+      nValue.textContent = "1";
+    } else {
+      nValue.textContent = nSlider.value;
+    }
   });
 }
 
