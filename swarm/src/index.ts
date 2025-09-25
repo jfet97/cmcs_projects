@@ -34,14 +34,29 @@ function initializeUI() {
   // flocking behavior controls
   interactionSlider = document.getElementById("interaction-slider") as HTMLInputElement;
   interactionValue = document.getElementById("interaction-value") as HTMLElement;
-  separationDistanceSlider = document.getElementById("separation-distance-slider") as HTMLInputElement;
+  separationDistanceSlider = document.getElementById(
+    "separation-distance-slider"
+  ) as HTMLInputElement;
   separationDistanceValue = document.getElementById("separation-distance-value") as HTMLElement;
-  separationStrengthSlider = document.getElementById("separation-strength-slider") as HTMLInputElement;
+  separationStrengthSlider = document.getElementById(
+    "separation-strength-slider"
+  ) as HTMLInputElement;
   separationStrengthValue = document.getElementById("separation-strength-value") as HTMLElement;
 
-  if (!nSlider || !nValue || !etaSlider || !etaValue || !orderValue || !singleAgentCheckbox ||
-      !interactionSlider || !interactionValue || !separationDistanceSlider || !separationDistanceValue ||
-      !separationStrengthSlider || !separationStrengthValue) {
+  if (
+    !nSlider ||
+    !nValue ||
+    !etaSlider ||
+    !etaValue ||
+    !orderValue ||
+    !singleAgentCheckbox ||
+    !interactionSlider ||
+    !interactionValue ||
+    !separationDistanceSlider ||
+    !separationDistanceValue ||
+    !separationStrengthSlider ||
+    !separationStrengthValue
+  ) {
     throw new Error("Required UI elements not found");
   }
 
