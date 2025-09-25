@@ -62,10 +62,10 @@ function initializeSimulation() {
 
   // create visualization with world bounds
   const worldBounds = {
-    minX: -4,
-    maxX: 4,
-    minY: -4,
-    maxY: 4
+    minX: -8,
+    maxX: 8,
+    minY: -8,
+    maxY: 8
   };
   visualization = new SwarmVisualization(model.turtles, worldBounds);
 

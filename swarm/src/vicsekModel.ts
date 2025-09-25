@@ -12,15 +12,15 @@ export class VicsekModel extends Model {
   noiseLevel = 0.1; // η parameter: angular noise strength
   orderParameter = 0; // Φ: measures collective alignment (0=random, 1=aligned)
 
-  worldSize = 8; // square world dimensions with periodic boundaries
+  worldSize = 16; // square world dimensions with periodic boundaries
 
   constructor() {
     // set up periodic boundary conditions - AgentScript requires integer bounds
     const bounds = {
-      minX: -4,
-      maxX: 4,
-      minY: -4,
-      maxY: 4
+      minX: -8,
+      maxX: 8,
+      minY: -8,
+      maxY: 8
     };
     super(bounds);
   }
