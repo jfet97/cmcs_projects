@@ -7,7 +7,7 @@ export interface VicsekAgent extends Turtle {
 
 export class VicsekModel extends Model {
   numAgents = 300;
-  interactionRadius = 1; // radius within which agents influence each other
+  interactionRadius = 0.8; // radius within which agents influence each other
   velocity = 0.03; // constant speed for all agents
   noiseLevel = 0.1; // η parameter: angular noise strength
   orderParameter = 0; // Φ: measures collective alignment (0=random, 1=aligned)
@@ -16,8 +16,8 @@ export class VicsekModel extends Model {
   boundaryAvoidanceDistance = 1.5; // distance from edge to start avoiding boundaries
   boundaryAvoidanceStrength = 0.3; // strength of boundary avoidance force
 
-  separationDistance = 0.2; // minimum distance to maintain between agents
-  separationStrength = 0.4; // strength of separation force
+  separationDistance = 0.3; // minimum distance to maintain between agents
+  separationStrength = 0.6; // strength of separation force
 
   constructor() {
     // set up periodic boundary conditions - AgentScript requires integer bounds
@@ -265,7 +265,7 @@ export class VicsekModel extends Model {
     while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
 
     // apply gradual adjustment
-    return angleDiff * 0.2;
+    return angleDiff * 0.3;
   }
 
   /**
