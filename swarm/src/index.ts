@@ -4,7 +4,6 @@ import { SwarmVisualization } from "./swarmVisualization";
 // global variables
 let model: VicsekModel;
 let visualization: SwarmVisualization;
-let animationId: number;
 
 // UI elements
 let nSlider: HTMLInputElement;
@@ -133,9 +132,6 @@ function animate() {
 
   // update order parameter display with fixed width to prevent flickering
   orderValue.textContent = model.orderParameter.toFixed(3);
-
-  // continue animation
-  animationId = requestAnimationFrame(animate);
 }
 
 function startSimulation() {
