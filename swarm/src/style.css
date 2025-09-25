@@ -1,0 +1,44 @@
+body {
+  font-family: sans-serif;
+  background-color: #f0f0f0;
+  color: #333;
+  margin: 20px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+}
+
+.controls input[type="range"] {
+  width: 120px;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+#world {
+  width: 600px;
+  height: 600px;
+  border: 2px solid #555;
+  background-color: #000;
+  display: block;
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Vicsek Swarm Simulation</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <h1>Vicsek Swarm Model</h1>
+    <div class="controls">
+      <label>
+        Number of agents (N): <span id="n-value">300</span>
+        <input type="range" id="n-slider" min="50" max="1000" value="300" step="50" />
+      </label>
+      <label>
+        Noise level (η): <span id="eta-value">0.1</span>
+        <input type="range" id="eta-slider" min="0" max="1" value="0.1" step="0.05" />
+      </label>
+      <label> Order parameter (Φ): <span id="order-value">0.0</span> </label>
+    </div>
+    <div class="container">
+      <canvas id="world" width="600" height="600"></canvas>
+    </div>
+
+    <script type="module" src="index.ts"></script>
+  </body>
+</html>
