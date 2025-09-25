@@ -12,6 +12,8 @@ let etaSlider: HTMLInputElement;
 let etaValue: HTMLElement;
 let orderValue: HTMLElement;
 let singleAgentCheckbox: HTMLInputElement;
+let resetAllBtn: HTMLButtonElement;
+let restartSimBtn: HTMLButtonElement;
 
 // flocking behavior controls
 let interactionSlider: HTMLInputElement;
@@ -29,6 +31,8 @@ function initializeUI() {
   etaValue = document.getElementById("eta-value") as HTMLElement;
   orderValue = document.getElementById("order-value") as HTMLElement;
   singleAgentCheckbox = document.getElementById("single-agent") as HTMLInputElement;
+  resetAllBtn = document.getElementById("reset-all-btn") as HTMLButtonElement;
+  restartSimBtn = document.getElementById("restart-sim-btn") as HTMLButtonElement;
 
   // flocking behavior controls
   interactionSlider = document.getElementById("interaction-slider") as HTMLInputElement;
@@ -49,6 +53,8 @@ function initializeUI() {
     !etaValue ||
     !orderValue ||
     !singleAgentCheckbox ||
+    !resetAllBtn ||
+    !restartSimBtn ||
     !interactionSlider ||
     !interactionValue ||
     !separationDistanceSlider ||
@@ -103,6 +109,15 @@ function initializeUI() {
     const newStrength = parseFloat(separationStrengthSlider.value);
     separationStrengthValue.textContent = newStrength.toFixed(1);
     model.setSeparationStrength(newStrength);
+  });
+
+  // reset button event listeners
+  resetAllBtn.addEventListener("click", () => {
+    window.location.reload();
+  });
+
+  restartSimBtn.addEventListener("click", () => {
+    model.setup(); // reinitialize agents with new random positions
   });
 }
 
