@@ -94,7 +94,7 @@ export class SwarmVisualization {
   }
 
   private drawAgent(agent: VicsekAgent) {
-    const size = 0.15; // triangle size in world units
+    const size = 0.08; // triangle size in world units
 
     this.ctx.save();
     this.ctx.translate(agent.x, agent.y);

@@ -45,7 +45,7 @@ export class VicsekModel extends Model {
       agent.velocity = this.velocity;
 
       // visual size
-      agent.size = 0.05;
+      agent.size = 0.03;
     });
   }
 
