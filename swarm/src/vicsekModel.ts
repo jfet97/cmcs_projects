@@ -16,6 +16,9 @@ export class VicsekModel extends Model {
   boundaryAvoidanceDistance = 1.5; // distance from edge to start avoiding boundaries
   boundaryAvoidanceStrength = 0.3; // strength of boundary avoidance force
 
+  separationDistance = 0.2; // minimum distance to maintain between agents
+  separationStrength = 0.4; // strength of separation force
+
   constructor() {
     // set up periodic boundary conditions - AgentScript requires integer bounds
     const bounds = {
@@ -88,6 +91,10 @@ export class VicsekModel extends Model {
       // add boundary avoidance if agent is near edges
       const boundaryAvoidance = this.calculateBoundaryAvoidance(agent);
       avgDirection += boundaryAvoidance;
+
+      // add separation force to avoid overcrowding
+      const separationForce = this.calculateSeparation(agent, neighbors);
+      avgDirection += separationForce;
 
       // add random noise: ξ ~ U(-η/2, η/2) where η is noiseLevel
       const noise = (Math.random() - 0.5) * this.noiseLevel;
@@ -206,6 +213,59 @@ export class VicsekModel extends Model {
 
     // apply a fraction of the desired turn to make it gradual
     return angleDiff * 0.1;
+  }
+
+  /**
+   * Calculates separation force to maintain minimum distance between agents
+   * Creates repulsive forces from nearby agents to prevent clustering
+   * @param agent The focal agent
+   * @param neighbors Array of neighboring agents
+   * @returns Angular adjustment to maintain separation
+   */
+  calculateSeparation(agent: VicsekAgent, neighbors: VicsekAgent[]): number {
+    let forceX = 0;
+    let forceY = 0;
+
+    // check all neighbors for separation
+    for (const neighbor of neighbors) {
+      const distance = this.calculateDistance(agent, neighbor);
+
+      if (distance < this.separationDistance && distance > 0) {
+        // calculate direction away from neighbor
+        const dx = agent.x - neighbor.x;
+        const dy = agent.y - neighbor.y;
+
+        // normalize direction vector
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const normalizedDx = dx / length;
+        const normalizedDy = dy / length;
+
+        // force strength inversely proportional to distance
+        const strength = (this.separationDistance - distance) / this.separationDistance;
+
+        // add repulsive force
+        forceX += normalizedDx * this.separationStrength * strength;
+        forceY += normalizedDy * this.separationStrength * strength;
+      }
+    }
+
+    // convert force to angle adjustment
+    if (forceX === 0 && forceY === 0) {
+      return 0;
+    }
+
+    // calculate desired direction for separation
+    const desiredDirection = Math.atan2(forceY, forceX);
+
+    // calculate angle difference
+    let angleDiff = desiredDirection - agent.direction;
+
+    // normalize angle difference to [-π, π]
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+    // apply gradual adjustment
+    return angleDiff * 0.2;
   }
 
   /**
