@@ -14,6 +14,14 @@ let etaValue: HTMLElement;
 let orderValue: HTMLElement;
 let singleAgentCheckbox: HTMLInputElement;
 
+// flocking behavior controls
+let interactionSlider: HTMLInputElement;
+let interactionValue: HTMLElement;
+let separationDistanceSlider: HTMLInputElement;
+let separationDistanceValue: HTMLElement;
+let separationStrengthSlider: HTMLInputElement;
+let separationStrengthValue: HTMLElement;
+
 function initializeUI() {
   // get UI elements
   nSlider = document.getElementById("n-slider") as HTMLInputElement;
@@ -23,7 +31,17 @@ function initializeUI() {
   orderValue = document.getElementById("order-value") as HTMLElement;
   singleAgentCheckbox = document.getElementById("single-agent") as HTMLInputElement;
 
-  if (!nSlider || !nValue || !etaSlider || !etaValue || !orderValue || !singleAgentCheckbox) {
+  // flocking behavior controls
+  interactionSlider = document.getElementById("interaction-slider") as HTMLInputElement;
+  interactionValue = document.getElementById("interaction-value") as HTMLElement;
+  separationDistanceSlider = document.getElementById("separation-distance-slider") as HTMLInputElement;
+  separationDistanceValue = document.getElementById("separation-distance-value") as HTMLElement;
+  separationStrengthSlider = document.getElementById("separation-strength-slider") as HTMLInputElement;
+  separationStrengthValue = document.getElementById("separation-strength-value") as HTMLElement;
+
+  if (!nSlider || !nValue || !etaSlider || !etaValue || !orderValue || !singleAgentCheckbox ||
+      !interactionSlider || !interactionValue || !separationDistanceSlider || !separationDistanceValue ||
+      !separationStrengthSlider || !separationStrengthValue) {
     throw new Error("Required UI elements not found");
   }
 
@@ -53,6 +71,25 @@ function initializeUI() {
       nValue.textContent = nSlider.value;
     }
   });
+
+  // flocking behavior event listeners
+  interactionSlider.addEventListener("input", () => {
+    const newRadius = parseFloat(interactionSlider.value);
+    interactionValue.textContent = newRadius.toFixed(1);
+    model.setInteractionRadius(newRadius);
+  });
+
+  separationDistanceSlider.addEventListener("input", () => {
+    const newDistance = parseFloat(separationDistanceSlider.value);
+    separationDistanceValue.textContent = newDistance.toFixed(2);
+    model.setSeparationDistance(newDistance);
+  });
+
+  separationStrengthSlider.addEventListener("input", () => {
+    const newStrength = parseFloat(separationStrengthSlider.value);
+    separationStrengthValue.textContent = newStrength.toFixed(1);
+    model.setSeparationStrength(newStrength);
+  });
 }
 
 function initializeSimulation() {
@@ -79,7 +116,7 @@ function animate() {
   // update visualization
   visualization.drawAgents();
 
-  // update order parameter display
+  // update order parameter display with fixed width to prevent flickering
   orderValue.textContent = model.orderParameter.toFixed(3);
 
   // continue animation

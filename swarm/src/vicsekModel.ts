@@ -337,4 +337,28 @@ export class VicsekModel extends Model {
   setNoiseLevel(eta: number) {
     this.noiseLevel = eta;
   }
+
+  /**
+   * Changes the interaction radius for neighbor detection
+   * @param radius New interaction radius
+   */
+  setInteractionRadius(radius: number) {
+    this.interactionRadius = radius;
+  }
+
+  /**
+   * Changes the minimum separation distance between agents
+   * @param distance New separation distance
+   */
+  setSeparationDistance(distance: number) {
+    this.separationDistance = distance;
+  }
+
+  /**
+   * Changes the strength of separation force
+   * @param strength New separation strength
+   */
+  setSeparationStrength(strength: number) {
+    this.separationStrength = strength;
+  }
 }
