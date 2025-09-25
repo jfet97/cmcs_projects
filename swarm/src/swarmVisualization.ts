@@ -50,7 +50,7 @@ export class SwarmVisualization {
     const worldHeight = worldBounds.maxY - worldBounds.minY;
 
     // calculate display size - make it fit nicely in 600px
-    const displaySize = 600;
+    const displaySize = 700;
     const displayWidth = displaySize;
     const displayHeight = displaySize;
 
