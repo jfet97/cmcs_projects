@@ -132,6 +132,9 @@ function animate() {
 
   // update order parameter display with fixed width to prevent flickering
   orderValue.textContent = model.orderParameter.toFixed(3);
+
+  // continue animation
+  requestAnimationFrame(animate);
 }
 
 function startSimulation() {
