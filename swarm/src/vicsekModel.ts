@@ -12,7 +12,9 @@ export class VicsekModel extends Model {
   noiseLevel = 0.1; // η parameter: angular noise strength
   orderParameter = 0; // Φ: measures collective alignment (0=random, 1=aligned)
 
-  worldSize = 24; // square world dimensions with periodic boundaries
+  worldSize = 24; // square world dimensions with boundary avoidance
+  boundaryAvoidanceDistance = 1.5; // distance from edge to start avoiding boundaries
+  boundaryAvoidanceStrength = 0.3; // strength of boundary avoidance force
 
   constructor() {
     // set up periodic boundary conditions - AgentScript requires integer bounds
@@ -83,6 +85,10 @@ export class VicsekModel extends Model {
       const neighbors = this.findNeighbors(agent, agents);
       let avgDirection = this.calculateMeanDirection([agent, ...neighbors]);
 
+      // add boundary avoidance if agent is near edges
+      const boundaryAvoidance = this.calculateBoundaryAvoidance(agent);
+      avgDirection += boundaryAvoidance;
+
       // add random noise: ξ ~ U(-η/2, η/2) where η is noiseLevel
       const noise = (Math.random() - 0.5) * this.noiseLevel;
       avgDirection += noise;
@@ -112,21 +118,15 @@ export class VicsekModel extends Model {
   }
 
   /**
-   * Calculates distance between two agents accounting for periodic boundaries
-   * In a toroidal world, agents can be closer by wrapping around edges
+   * Calculates Euclidean distance between two agents
    * @param agent1 First agent
    * @param agent2 Second agent
-   * @returns Shortest distance considering periodic wrapping
+   * @returns Distance between agents
    */
   calculateDistance(agent1: VicsekAgent, agent2: VicsekAgent): number {
-    const dx = Math.abs(agent1.x - agent2.x);
-    const dy = Math.abs(agent1.y - agent2.y);
-
-    // find shortest path considering periodic boundaries
-    const periodicDx = Math.min(dx, this.worldSize - dx);
-    const periodicDy = Math.min(dy, this.worldSize - dy);
-
-    return Math.sqrt(periodicDx * periodicDx + periodicDy * periodicDy);
+    const dx = agent1.x - agent2.x;
+    const dy = agent1.y - agent2.y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   /**
@@ -151,8 +151,66 @@ export class VicsekModel extends Model {
   }
 
   /**
+   * Calculates boundary avoidance force for agents near world edges
+   * Creates a repulsive force vector pointing away from the nearest boundary
+   * @param agent The agent to calculate avoidance for
+   * @returns Angular adjustment in radians to avoid boundaries
+   */
+  calculateBoundaryAvoidance(agent: VicsekAgent): number {
+    const halfSize = this.worldSize / 2;
+    let forceX = 0;
+    let forceY = 0;
+
+    // calculate repulsive force from each boundary
+    const distToRight = halfSize - agent.x;
+    const distToLeft = agent.x + halfSize;
+    const distToTop = halfSize - agent.y;
+    const distToBottom = agent.y + halfSize;
+
+    // add repulsive forces if within avoidance distance
+    if (distToRight < this.boundaryAvoidanceDistance) {
+      const strength =
+        (this.boundaryAvoidanceDistance - distToRight) / this.boundaryAvoidanceDistance;
+      forceX -= this.boundaryAvoidanceStrength * strength; // push left
+    }
+    if (distToLeft < this.boundaryAvoidanceDistance) {
+      const strength =
+        (this.boundaryAvoidanceDistance - distToLeft) / this.boundaryAvoidanceDistance;
+      forceX += this.boundaryAvoidanceStrength * strength; // push right
+    }
+    if (distToTop < this.boundaryAvoidanceDistance) {
+      const strength =
+        (this.boundaryAvoidanceDistance - distToTop) / this.boundaryAvoidanceDistance;
+      forceY -= this.boundaryAvoidanceStrength * strength; // push down
+    }
+    if (distToBottom < this.boundaryAvoidanceDistance) {
+      const strength =
+        (this.boundaryAvoidanceDistance - distToBottom) / this.boundaryAvoidanceDistance;
+      forceY += this.boundaryAvoidanceStrength * strength; // push up
+    }
+
+    // convert force vector to angle adjustment if there's any force
+    if (forceX === 0 && forceY === 0) {
+      return 0;
+    }
+
+    // calculate desired direction away from boundaries
+    const desiredDirection = Math.atan2(forceY, forceX);
+
+    // calculate angle difference between current direction and desired direction
+    let angleDiff = desiredDirection - agent.direction;
+
+    // normalize angle difference to [-π, π]
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+    // apply a fraction of the desired turn to make it gradual
+    return angleDiff * 0.1;
+  }
+
+  /**
    * Moves all agents forward at constant velocity in their current direction
-   * Applies periodic boundary conditions so agents wrap around world edges
+   * Applies boundary constraints to keep agents within world bounds
    */
   updatePositions() {
     this.turtles.ask((agent: VicsekAgent) => {
@@ -160,25 +218,11 @@ export class VicsekModel extends Model {
       agent.x += this.velocity * Math.cos(agent.direction);
       agent.y += this.velocity * Math.sin(agent.direction);
 
-      // handle periodic boundaries (toroidal world)
-      agent.x = this.wrapCoordinate(agent.x);
-      agent.y = this.wrapCoordinate(agent.y);
+      // clamp positions to world boundaries (no wrapping)
+      const halfSize = this.worldSize / 2;
+      agent.x = Math.max(-halfSize, Math.min(halfSize, agent.x));
+      agent.y = Math.max(-halfSize, Math.min(halfSize, agent.y));
     });
-  }
-
-  /**
-   * Wraps coordinate to stay within world bounds using periodic boundaries
-   * @param coord Coordinate value to wrap
-   * @returns Wrapped coordinate within [-worldSize/2, worldSize/2]
-   */
-  wrapCoordinate(coord: number): number {
-    const halfSize = this.worldSize / 2;
-    if (coord > halfSize) {
-      return coord - this.worldSize;
-    } else if (coord < -halfSize) {
-      return coord + this.worldSize;
-    }
-    return coord;
   }
 
   /**
