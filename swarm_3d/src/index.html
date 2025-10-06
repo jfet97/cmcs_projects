@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Vicsek Swarm 3D Simulation</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <header>
+      <h1>Vicsek Swarm Model 3D</h1>
+      <div class="status-bar">
+        <div class="status-item">
+          <span class="status-label">Swarm Alignment:</span>
+          <span id="order-value" class="status-value">0.000</span>
+          <span class="status-description">0 = chaotic, 1 = coordinated</span>
+        </div>
+        <label class="single-agent-toggle">
+          <input type="checkbox" id="single-agent" />
+          <span>Single Agent Mode</span>
+        </label>
+        <div class="reset-buttons">
+          <button id="reset-all-btn" class="reset-btn" title="Reset all parameters to defaults">Reset All</button>
+          <button id="restart-sim-btn" class="reset-btn" title="New positions, keep parameters">Restart Simulation</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-container">
+      <aside class="controls-panel left-panel">
+        <div class="control-group">
+          <h3>Basic Parameters</h3>
+          <div class="control-item">
+            <label class="control-label">
+              <span class="label-text">Number of Agents</span>
+              <span class="param-symbol">(N)</span>
+            </label>
+            <div class="control-input">
+              <input type="range" id="n-slider" min="50" max="1000" value="300" step="50" />
+              <span id="n-value" class="value-display">300</span>
+            </div>
+          </div>
+
+          <div class="control-item">
+            <label class="control-label">
+              <span class="label-text">Noise Level</span>
+              <span class="param-symbol">(η)</span>
+            </label>
+            <div class="control-input">
+              <input type="range" id="eta-slider" min="0" max="1" value="0.1" step="0.05" />
+              <span id="eta-value" class="value-display">0.1</span>
+            </div>
+            <p class="description">Random 3D angular perturbation strength</p>
+          </div>
+        </div>
+      </aside>
+
+      <div class="simulation-container">
+        <canvas id="world" width="735" height="735"></canvas>
+      </div>
+
+      <aside class="controls-panel right-panel">
+        <div class="control-group">
+          <h3>3D Flocking Behavior</h3>
+          <div class="control-item">
+            <label class="control-label">
+              <span class="label-text">Interaction Radius</span>
+            </label>
+            <div class="control-input">
+              <input type="range" id="interaction-slider" min="0.5" max="1.2" value="0.8" step="0.05" />
+              <span id="interaction-value" class="value-display">0.8</span>
+            </div>
+            <p class="description">3D vision range: lower = more chaotic, higher = more coordinated</p>
+          </div>
+
+          <div class="control-item">
+            <label class="control-label">
+              <span class="label-text">Separation Distance</span>
+            </label>
+            <div class="control-input">
+              <input type="range" id="separation-distance-slider" min="0.15" max="0.5" value="0.3" step="0.025" />
+              <span id="separation-distance-value" class="value-display">0.30</span>
+            </div>
+            <p class="description">3D personal space: lower = clustering, higher = more dispersed</p>
+          </div>
+
+          <div class="control-item">
+            <label class="control-label">
+              <span class="label-text">Separation Strength</span>
+            </label>
+            <div class="control-input">
+              <input type="range" id="separation-strength-slider" min="0.2" max="1.0" value="0.6" step="0.05" />
+              <span id="separation-strength-value" class="value-display">0.6</span>
+            </div>
+            <p class="description">3D repulsive force: lower = weak repulsion, higher = strong repulsion</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script type="module" src="index.ts"></script>
+  </body>
+</html>
