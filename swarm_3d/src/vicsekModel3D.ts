@@ -10,7 +10,7 @@ export class VicsekModel3D extends Model3D {
   interactionRadius = 0.8; // radius within which agents influence each other
   velocity = 0.03; // base speed for all agents
   velocityVariation = 0.15; // velocity variation range (±15%)
-  noiseLevel = 0.1; // η parameter: angular noise strength
+  noiseLevel = 0; // η parameter: angular noise strength
   orderParameter = 0; // Φ: measures collective alignment (0=random, 1=aligned)
 
   worldSize = 24; // cubic world dimensions with boundary avoidance
