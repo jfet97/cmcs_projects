@@ -13,11 +13,11 @@ export class VicsekModel3D extends Model3D {
   orderParameter = 0; // Φ: measures collective alignment (0=random, 1=aligned)
 
   worldSize = 24; // cubic world dimensions with boundary avoidance
-  boundaryAvoidanceDistance = 1.5; // distance from edge to start avoiding boundaries
-  boundaryAvoidanceStrength = 0.3; // strength of boundary avoidance force
+  boundaryAvoidanceDistance = 3.0; // distance from edge to start avoiding boundaries
+  boundaryAvoidanceStrength = 0.5; // strength of boundary avoidance force
 
-  separationDistance = 0.3; // minimum distance to maintain between agents
-  separationStrength = 0.6; // strength of separation force
+  separationDistance = 0.5; // minimum distance to maintain between agents
+  separationStrength = 0.8; // strength of separation force
 
   constructor() {
     // set up cubic boundary conditions - AgentScript requires integer bounds
@@ -35,7 +35,7 @@ export class VicsekModel3D extends Model3D {
   /**
    * Initializes the model by creating all agents
    */
-  setup() {
+  override setup() {
     this.initializeAgents();
   }
 
@@ -101,7 +101,7 @@ export class VicsekModel3D extends Model3D {
     for (let i = 0; i < agents.length; i++) {
       const agent = agents[i];
       const neighbors = this.findNeighbors(agent, agents);
-      let avgDirection = this.calculateMeanDirection([agent, ...neighbors]);
+      const avgDirection = this.calculateMeanDirection([agent, ...neighbors]);
 
       // add boundary avoidance if agent is near edges
       const boundaryAvoidance = this.calculateBoundaryAvoidance(agent);
@@ -124,8 +124,8 @@ export class VicsekModel3D extends Model3D {
       // normalize the resulting direction vector
       const magnitude = Math.sqrt(
         avgDirection.x * avgDirection.x +
-        avgDirection.y * avgDirection.y +
-        avgDirection.z * avgDirection.z
+          avgDirection.y * avgDirection.y +
+          avgDirection.z * avgDirection.z
       );
 
       if (magnitude > 0) {
@@ -246,27 +246,33 @@ export class VicsekModel3D extends Model3D {
 
     // add repulsive forces if within avoidance distance
     if (distToRight < this.boundaryAvoidanceDistance) {
-      const strength = (this.boundaryAvoidanceDistance - distToRight) / this.boundaryAvoidanceDistance;
+      const strength =
+        (this.boundaryAvoidanceDistance - distToRight) / this.boundaryAvoidanceDistance;
       forceX -= this.boundaryAvoidanceStrength * strength;
     }
     if (distToLeft < this.boundaryAvoidanceDistance) {
-      const strength = (this.boundaryAvoidanceDistance - distToLeft) / this.boundaryAvoidanceDistance;
+      const strength =
+        (this.boundaryAvoidanceDistance - distToLeft) / this.boundaryAvoidanceDistance;
       forceX += this.boundaryAvoidanceStrength * strength;
     }
     if (distToTop < this.boundaryAvoidanceDistance) {
-      const strength = (this.boundaryAvoidanceDistance - distToTop) / this.boundaryAvoidanceDistance;
+      const strength =
+        (this.boundaryAvoidanceDistance - distToTop) / this.boundaryAvoidanceDistance;
       forceY -= this.boundaryAvoidanceStrength * strength;
     }
     if (distToBottom < this.boundaryAvoidanceDistance) {
-      const strength = (this.boundaryAvoidanceDistance - distToBottom) / this.boundaryAvoidanceDistance;
+      const strength =
+        (this.boundaryAvoidanceDistance - distToBottom) / this.boundaryAvoidanceDistance;
       forceY += this.boundaryAvoidanceStrength * strength;
     }
     if (distToFront < this.boundaryAvoidanceDistance) {
-      const strength = (this.boundaryAvoidanceDistance - distToFront) / this.boundaryAvoidanceDistance;
+      const strength =
+        (this.boundaryAvoidanceDistance - distToFront) / this.boundaryAvoidanceDistance;
       forceZ -= this.boundaryAvoidanceStrength * strength;
     }
     if (distToBack < this.boundaryAvoidanceDistance) {
-      const strength = (this.boundaryAvoidanceDistance - distToBack) / this.boundaryAvoidanceDistance;
+      const strength =
+        (this.boundaryAvoidanceDistance - distToBack) / this.boundaryAvoidanceDistance;
       forceZ += this.boundaryAvoidanceStrength * strength;
     }
 
@@ -285,7 +291,10 @@ export class VicsekModel3D extends Model3D {
    * @param neighbors Array of neighboring agents
    * @returns 3D force vector for maintaining separation
    */
-  calculateSeparation(agent: VicsekAgent3D, neighbors: VicsekAgent3D[]): { x: number; y: number; z: number } {
+  calculateSeparation(
+    agent: VicsekAgent3D,
+    neighbors: VicsekAgent3D[]
+  ): { x: number; y: number; z: number } {
     let forceX = 0;
     let forceY = 0;
     let forceZ = 0;

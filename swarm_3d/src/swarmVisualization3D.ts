@@ -80,7 +80,7 @@ export class SwarmVisualization3D {
    */
   private setupAgentGeometries() {
     // Create arrow-like geometry for each agent
-    const arrowGeometry = new THREE.ConeGeometry(0.3, 1.0, 8); // radius, height, segments - made much bigger
+    const arrowGeometry = new THREE.ConeGeometry(0.15, 0.5, 8); // radius, height, segments
 
     let i = 0;
     this.turtles.ask((agent: VicsekAgent3D) => {
@@ -166,15 +166,6 @@ export class SwarmVisualization3D {
       `Wireframe box position: (${wireframeBox.position.x}, ${wireframeBox.position.y}, ${wireframeBox.position.z})`
     );
     this.scene.add(wireframeBox);
-
-    // Add a red sphere at the world origin for debugging
-    const originMarker = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xff0000 })
-    );
-    originMarker.position.set(0, 0, 0);
-    this.scene.add(originMarker);
-    console.log("Added red origin marker at (0, 0, 0)");
   }
 
   /**
@@ -236,7 +227,7 @@ export class SwarmVisualization3D {
 
     // Add new meshes if agents were added
     while (this.agentMeshes.length < this.turtles.length) {
-      const arrowGeometry = new THREE.ConeGeometry(0.3, 1.0, 8);
+      const arrowGeometry = new THREE.ConeGeometry(0.15, 0.5, 8);
       const material = new THREE.MeshBasicMaterial({ color: 0x0066cc });
       const mesh = new THREE.Mesh(arrowGeometry, material);
       this.scene.add(mesh);
