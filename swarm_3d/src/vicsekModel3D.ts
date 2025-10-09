@@ -1,8 +1,8 @@
 import { Model3D, Turtle3D } from "agentscript";
 
 export interface VicsekAgent3D extends Turtle3D {
-  direction: { x: number; y: number; z: number }; // 3D direction vector (normalized)
-  velocity: number; // speed magnitude (constant for all agents)
+  direction: { x: number; y: number; z: number }; // normalized 3D direction vector (unit length)
+  velocity: number; // individual speed magnitude with ±15% variation
 }
 
 export class VicsekModel3D extends Model3D {
@@ -58,9 +58,11 @@ export class VicsekModel3D extends Model3D {
 
       agent.setxyz(x, y, z);
 
-      // assign random initial 3D direction (normalized vector)
-      const theta = Math.acos(1 - 2 * Math.random()); // polar angle [0, π]
-      const phi = Math.random() * 2 * Math.PI; // azimuthal angle [0, 2π]
+      // assign random initial 3D direction using spherical coordinates
+      // θ (theta): polar angle [0, π] via inverse CDF for uniform sphere sampling
+      const theta = Math.acos(1 - 2 * Math.random());
+      // φ (phi): azimuthal angle [0, 2π] uniformly distributed
+      const phi = Math.random() * 2 * Math.PI;
 
       agent.direction = {
         x: Math.sin(theta) * Math.cos(phi),
@@ -68,7 +70,7 @@ export class VicsekModel3D extends Model3D {
         z: Math.cos(theta)
       };
 
-      // assign slightly variable velocity (base ± variation)
+      // assign variable velocity: v_i = v_base × (1 + ε) where ε ~ U(-0.15, +0.15)
       const variation = (Math.random() - 0.5) * 2 * this.velocityVariation;
       agent.velocity = this.velocity * (1 + variation);
 
@@ -157,11 +159,13 @@ export class VicsekModel3D extends Model3D {
   }
 
   /**
-   * Generates random 3D noise vector
+   * Generates random 3D noise vector using spherical coordinates
+   * Uses uniform distribution on unit sphere to avoid directional bias
    */
   generate3DNoise(): { x: number; y: number; z: number } {
-    // Generate random point on unit sphere for unbiased 3D noise
+    // θ (theta): polar angle [0, π] via inverse CDF: arccos(1 - 2u) where u ~ U(0,1)
     const theta = Math.acos(1 - 2 * Math.random());
+    // φ (phi): azimuthal angle [0, 2π] uniformly distributed
     const phi = Math.random() * 2 * Math.PI;
 
     return {
@@ -202,6 +206,7 @@ export class VicsekModel3D extends Model3D {
 
   /**
    * Calculates mean direction of a group of agents using 3D vector averaging
+   * Formula: d_avg = (Σ d_i) / ||Σ d_i|| where d_i are unit direction vectors
    * @param agents Array of agents to average directions for
    * @returns Mean direction as normalized 3D vector
    */
@@ -210,20 +215,20 @@ export class VicsekModel3D extends Model3D {
     let sumY = 0;
     let sumZ = 0;
 
-    // sum direction vectors
+    // compute vector sum: Σ d_i
     for (const agent of agents) {
       sumX += agent.direction.x;
       sumY += agent.direction.y;
       sumZ += agent.direction.z;
     }
 
-    // average the vectors
+    // divide by count to get average vector
     const count = agents.length;
     const avgX = sumX / count;
     const avgY = sumY / count;
     const avgZ = sumZ / count;
 
-    // normalize the result
+    // normalize to unit length: ||v|| = √(x² + y² + z²)
     const magnitude = Math.sqrt(avgX * avgX + avgY * avgY + avgZ * avgZ);
 
     if (magnitude > 0) {
@@ -241,6 +246,10 @@ export class VicsekModel3D extends Model3D {
    * Calculates boundary avoidance force for agents near world edges in 3D
    * Creates repulsive force vectors pointing away from the nearest boundaries
    * Adds randomness to prevent synchronized turning
+   * Force formula: F = -α × s(d) × r where:
+   *   α = boundaryAvoidanceStrength (force magnitude)
+   *   s(d) = (d_max - d) / d_max (linear decay with distance)
+   *   r ~ U(0.8, 1.2) (random factor ±20%)
    * @param agent The agent to calculate avoidance for
    * @returns 3D force vector to avoid boundaries
    */
@@ -250,7 +259,7 @@ export class VicsekModel3D extends Model3D {
     let forceY = 0;
     let forceZ = 0;
 
-    // calculate repulsive force from each boundary face
+    // calculate distance to each boundary face
     const distToRight = halfSize - agent.x;
     const distToLeft = agent.x + halfSize;
     const distToTop = halfSize - agent.y;
@@ -258,45 +267,46 @@ export class VicsekModel3D extends Model3D {
     const distToFront = halfSize - agent.z;
     const distToBack = agent.z + halfSize;
 
-    // add repulsive forces if within avoidance distance (with random variation)
+    // apply repulsive force if within avoidance threshold (with ±20% randomization)
     if (distToRight < this.boundaryAvoidanceDistance) {
+      // s(d) = (d_max - d) / d_max: linear strength decay from 1 (at boundary) to 0 (at threshold)
       const strength =
         (this.boundaryAvoidanceDistance - distToRight) / this.boundaryAvoidanceDistance;
-      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      const randomFactor = 0.8 + Math.random() * 0.4; // r ~ U(0.8, 1.2)
       forceX -= this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToLeft < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToLeft) / this.boundaryAvoidanceDistance;
-      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      const randomFactor = 0.8 + Math.random() * 0.4;
       forceX += this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToTop < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToTop) / this.boundaryAvoidanceDistance;
-      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      const randomFactor = 0.8 + Math.random() * 0.4;
       forceY -= this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToBottom < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToBottom) / this.boundaryAvoidanceDistance;
-      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      const randomFactor = 0.8 + Math.random() * 0.4;
       forceY += this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToFront < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToFront) / this.boundaryAvoidanceDistance;
-      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      const randomFactor = 0.8 + Math.random() * 0.4;
       forceZ -= this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToBack < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToBack) / this.boundaryAvoidanceDistance;
-      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      const randomFactor = 0.8 + Math.random() * 0.4;
       forceZ += this.boundaryAvoidanceStrength * strength * randomFactor;
     }
 
-    // apply gradual adjustment factor
+    // scale down by damping factor (0.1) for gradual turning
     return {
       x: forceX * 0.1,
       y: forceY * 0.1,
@@ -307,6 +317,10 @@ export class VicsekModel3D extends Model3D {
   /**
    * Calculates separation force to maintain minimum distance between agents in 3D
    * Creates repulsive forces from nearby agents to prevent clustering
+   * Force formula: F_sep = Σ β × s(d) × n̂ where:
+   *   β = separationStrength (repulsion magnitude)
+   *   s(d) = (d_min - d) / d_min (linear increase as distance decreases)
+   *   n̂ = normalized direction away from neighbor
    * @param agent The focal agent
    * @param neighbors Array of neighboring agents
    * @returns 3D force vector for maintaining separation
@@ -319,33 +333,33 @@ export class VicsekModel3D extends Model3D {
     let forceY = 0;
     let forceZ = 0;
 
-    // check all neighbors for separation
+    // accumulate repulsive forces from all neighbors within separation distance
     for (const neighbor of neighbors) {
       const distance = this.calculateDistance3D(agent, neighbor);
 
       if (distance < this.separationDistance && distance > 0) {
-        // calculate direction away from neighbor
+        // compute direction away from neighbor
         const dx = agent.x - neighbor.x;
         const dy = agent.y - neighbor.y;
         const dz = agent.z - neighbor.z;
 
-        // normalize direction vector
+        // normalize to unit vector: n̂ = Δr / ||Δr||
         const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
         const normalizedDx = dx / length;
         const normalizedDy = dy / length;
         const normalizedDz = dz / length;
 
-        // force strength inversely proportional to distance
+        // s(d) = (d_min - d) / d_min: strength increases as agents get closer
         const strength = (this.separationDistance - distance) / this.separationDistance;
 
-        // add repulsive force
+        // accumulate repulsive force: F += β × s(d) × n̂
         forceX += normalizedDx * this.separationStrength * strength;
         forceY += normalizedDy * this.separationStrength * strength;
         forceZ += normalizedDz * this.separationStrength * strength;
       }
     }
 
-    // apply gradual adjustment factor
+    // scale down by damping factor (0.3) for smooth separation behavior
     return {
       x: forceX * 0.3,
       y: forceY * 0.3,
@@ -356,6 +370,10 @@ export class VicsekModel3D extends Model3D {
   /**
    * Calculates cohesion force to steer agent toward the center of nearby agents
    * Creates attractive force toward the average position of neighbors within cohesion radius
+   * Force formula: F_coh = γ × (c - p) / ||c - p|| where:
+   *   γ = cohesionStrength (attraction magnitude)
+   *   c = center of mass of nearby agents: c = (1/N) × Σ p_i
+   *   p = agent's current position
    * @param agent The focal agent
    * @param agents Array of all agents to search through
    * @returns 3D force vector toward local group center
@@ -369,7 +387,7 @@ export class VicsekModel3D extends Model3D {
     let centerZ = 0;
     let count = 0;
 
-    // find all agents within cohesion radius and calculate their center of mass
+    // find all agents within cohesion radius and compute their center of mass
     for (const other of agents) {
       if (other === agent) continue;
       const distance = this.calculateDistance3D(agent, other);
@@ -382,22 +400,22 @@ export class VicsekModel3D extends Model3D {
       }
     }
 
-    // if no neighbors, no cohesion force
+    // no neighbors found: no cohesion force applied
     if (count === 0) {
       return { x: 0, y: 0, z: 0 };
     }
 
-    // calculate average position (center of mass)
+    // compute center of mass: c = (1/N) × Σ p_i
     centerX /= count;
     centerY /= count;
     centerZ /= count;
 
-    // calculate direction toward center
+    // compute direction toward center: Δr = c - p
     const dx = centerX - agent.x;
     const dy = centerY - agent.y;
     const dz = centerZ - agent.z;
 
-    // normalize and scale by cohesion strength
+    // normalize and scale by cohesion strength: F = γ × (Δr / ||Δr||)
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (distance > 0) {
       return {
@@ -433,16 +451,18 @@ export class VicsekModel3D extends Model3D {
   }
 
   /**
-   * Calculates the order parameter Φ for 3D, which measures collective alignment
+   * Calculates the order parameter Φ (phi) for 3D, which measures collective alignment
    *
-   * Formula: Φ = (1/N) * ||Σ(dir_i)||
-   * - Sums all agent direction vectors to get collective direction
-   * - Normalizes by agent count and takes magnitude
+   * Formula: Φ = (1/N) × ||Σ v̂_i|| where:
+   *   N = total number of agents
+   *   v̂_i = unit direction vector of agent i
+   *   Σ v̂_i = vector sum of all directions
+   *   ||·|| = Euclidean norm (magnitude)
    *
    * Interpretation:
-   * - Φ = 0: Completely random/disordered movement
-   * - Φ = 1: Perfect alignment, all agents moving in same direction
-   * - 0 < Φ < 1: Partial alignment, typical during flocking transitions
+   *   Φ = 0: completely random/disordered movement (no collective motion)
+   *   Φ = 1: perfect alignment, all agents moving in same direction
+   *   0 < Φ < 1: partial alignment, typical during flocking transitions
    */
   calculateOrderParameter() {
     if (this.turtles.length === 0) {
@@ -454,19 +474,20 @@ export class VicsekModel3D extends Model3D {
     let sumY = 0;
     let sumZ = 0;
 
-    // sum up direction vectors: each agent contributes its direction vector
+    // compute vector sum: Σ v̂_i
     this.turtles.ask((agent: VicsekAgent3D) => {
       sumX += agent.direction.x;
       sumY += agent.direction.y;
       sumZ += agent.direction.z;
     });
 
-    // normalize by population size and compute magnitude
+    // compute average direction vector: (1/N) × Σ v̂_i
     const invN = 1 / this.turtles.length;
     const avgX = sumX * invN;
     const avgY = sumY * invN;
     const avgZ = sumZ * invN;
 
+    // compute magnitude: Φ = ||(1/N) × Σ v̂_i|| = √(x² + y² + z²)
     this.orderParameter = Math.sqrt(avgX * avgX + avgY * avgY + avgZ * avgZ);
   }
 

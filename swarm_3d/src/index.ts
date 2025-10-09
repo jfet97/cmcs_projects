@@ -5,7 +5,7 @@ import { SwarmVisualization3D } from "./swarmVisualization3D";
 let model: VicsekModel3D;
 let visualization: SwarmVisualization3D;
 
-// UI elements
+// ui elements
 let nSlider: HTMLInputElement;
 let nValue: HTMLElement;
 let etaSlider: HTMLInputElement;

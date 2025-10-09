@@ -28,7 +28,7 @@ export class SwarmVisualization3D {
     this.dimensions = dimensions;
     this.turtles = turtles;
 
-    // --- Main Scene Setup ---
+    // main scene setup
     this.scene = new THREE.Scene();
     const aspectRatio = this.canvas.clientWidth / this.canvas.clientHeight;
     this.camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
@@ -37,16 +37,16 @@ export class SwarmVisualization3D {
     const pixelRatio = window.devicePixelRatio || 1;
     this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight, false);
     this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.setClearColor(0xffffff); // White background
+    this.renderer.setClearColor(0xffffff); // white background
 
-    // --- Movable Camera (OrbitControls) Setup ---
+    // movable camera (OrbitControls) setup
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
     this.controls.enableZoom = true;
     this.controls.zoomSpeed = 1.5;
 
-    // --- Orientation Axes Helper Setup (Second Scene) ---
+    // orientation axes helper setup (second scene)
     this.axesScene = new THREE.Scene();
     this.axesHelper = new THREE.AxesHelper(5);
     this.axesScene.add(this.axesHelper);
@@ -58,10 +58,9 @@ export class SwarmVisualization3D {
     this.axesCamera.up = this.camera.up;
 
     this.setupAgentGeometries();
-    // Posiziona la camera iniziale
     this.adjustCameraToShowWorld();
 
-    // Resize handler
+    // resize handler
     this.resizeHandler = () => {
       const w = this.canvas.clientWidth;
       const h = this.canvas.clientHeight;
@@ -79,20 +78,20 @@ export class SwarmVisualization3D {
    * Creates 3D geometries for each agent (arrows/cones showing direction)
    */
   private setupAgentGeometries() {
-    // Create arrow-like geometry for each agent
+    // create arrow-like cone geometry for each agent
     const arrowGeometry = new THREE.ConeGeometry(0.15, 0.5, 8); // radius, height, segments
 
     let i = 0;
     this.turtles.ask((agent: VicsekAgent3D) => {
-      // Create material with color based on direction
+      // create material with color mapped to agent direction
       const color = this.getColorFromDirection(agent.direction);
       const material = new THREE.MeshBasicMaterial({ color: color });
 
-      // Create mesh for this agent
+      // create mesh for this agent
       const mesh = new THREE.Mesh(arrowGeometry, material);
       mesh.position.set(agent.x, agent.y, agent.z);
 
-      // Orient the cone to point in the agent's direction
+      // orient the cone to point in the agent's direction
       this.orientMeshToDirection(mesh, agent.direction);
 
       this.scene.add(mesh);
@@ -102,17 +101,17 @@ export class SwarmVisualization3D {
   }
 
   /**
-   * Orients a mesh to point in the given 3D direction
+   * Orients a mesh to point in the given 3D direction using quaternion rotation
    */
   private orientMeshToDirection(mesh: THREE.Mesh, direction: { x: number; y: number; z: number }) {
-    // Create a direction vector
+    // create normalized direction vector
     const dir = new THREE.Vector3(direction.x, direction.y, direction.z);
     dir.normalize();
 
-    // Default cone points up (0, 1, 0), we want it to point in direction
+    // default cone points up (0, 1, 0), we want it to point in given direction
     const up = new THREE.Vector3(0, 1, 0);
 
-    // Calculate rotation to align cone with direction
+    // calculate rotation quaternion to align cone with direction
     const quaternion = new THREE.Quaternion();
     quaternion.setFromUnitVectors(up, dir);
     mesh.setRotationFromQuaternion(quaternion);
@@ -120,13 +119,14 @@ export class SwarmVisualization3D {
 
   /**
    * Calculates HSL color based on 3D direction vector
+   * Maps azimuthal angle φ = atan2(y, x) to hue [0°, 360°]
    */
   private getColorFromDirection(direction: { x: number; y: number; z: number }): number {
-    // Convert 3D direction to HSL hue
-    // Use spherical coordinates: atan2(y, x) for azimuthal angle
+    // convert 3D direction to HSL hue using azimuthal angle: φ = atan2(y, x)
+    // shift to [0°, 360°] range: hue = (φ × 180/π + 180) mod 360
     const hue = ((Math.atan2(direction.y, direction.x) * 180) / Math.PI + 180) % 360;
 
-    // Convert HSL to RGB for Three.js color
+    // convert HSL to RGB for Three.js color
     const saturation = 0.8;
     const lightness = 0.6;
 
@@ -137,9 +137,11 @@ export class SwarmVisualization3D {
 
   /**
    * Adjusts the camera's position to ensure the entire world is visible
+   * Calculates required distance based on FOV and world dimensions
    */
   public adjustCameraToShowWorld() {
     const fovInRadians = (this.camera.fov * Math.PI) / 180;
+    // distance = (dimension/2) / tan(FOV/2)
     const distanceForHeight = this.dimensions.height / 2 / Math.tan(fovInRadians / 2);
     const distanceForWidth =
       this.dimensions.width / 2 / (Math.tan(fovInRadians / 2) * this.camera.aspect);
@@ -204,20 +206,20 @@ export class SwarmVisualization3D {
       if (this.agentMeshes[i]) {
         const mesh = this.agentMeshes[i];
 
-        // Update position
+        // update position
         mesh.position.set(agent.x, agent.y, agent.z);
 
-        // Update orientation to match agent direction
+        // update orientation to match agent direction
         this.orientMeshToDirection(mesh, agent.direction);
 
-        // Update color based on direction
+        // update color based on direction
         const color = this.getColorFromDirection(agent.direction);
         (mesh.material as THREE.MeshBasicMaterial).color.setHex(color);
       }
       i++;
     });
 
-    // Handle case where number of agents changed
+    // handle case where number of agents decreased
     while (this.agentMeshes.length > this.turtles.length) {
       const mesh = this.agentMeshes.pop();
       if (mesh) {
@@ -225,7 +227,7 @@ export class SwarmVisualization3D {
       }
     }
 
-    // Add new meshes if agents were added
+    // add new meshes if agents were added
     while (this.agentMeshes.length < this.turtles.length) {
       const arrowGeometry = new THREE.ConeGeometry(0.15, 0.5, 8);
       const material = new THREE.MeshBasicMaterial({ color: 0x0066cc });
