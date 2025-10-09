@@ -7,7 +7,7 @@ export interface VicsekAgent3D extends Turtle3D {
 
 export class VicsekModel3D extends Model3D {
   numAgents = 300;
-  interactionRadius = 0.8; // radius within which agents influence each other
+  interactionRadius = 0.8; // radius for alignment (direction averaging)
   velocity = 0.03; // base speed for all agents
   velocityVariation = 0.15; // velocity variation range (±15%)
   noiseLevel = 0; // η parameter: angular noise strength
@@ -20,7 +20,11 @@ export class VicsekModel3D extends Model3D {
   separationDistance = 0.5; // minimum distance to maintain between agents
   separationStrength = 0.8; // strength of separation force
 
-  cohesionRadius = 2.0; // radius for calculating center of mass for cohesion
+  // cohesion radius is automatically 2.5× the interaction radius (biologically realistic)
+  // agents are attracted to a larger group than they align with
+  get cohesionRadius(): number {
+    return this.interactionRadius * 2.5;
+  }
   cohesionStrength = 0.2; // strength of cohesion force (attraction to group center)
 
   constructor() {
