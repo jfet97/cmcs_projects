@@ -8,7 +8,8 @@ export interface VicsekAgent3D extends Turtle3D {
 export class VicsekModel3D extends Model3D {
   numAgents = 300;
   interactionRadius = 0.8; // radius within which agents influence each other
-  velocity = 0.03; // constant speed for all agents
+  velocity = 0.03; // base speed for all agents
+  velocityVariation = 0.15; // velocity variation range (±15%)
   noiseLevel = 0.1; // η parameter: angular noise strength
   orderParameter = 0; // Φ: measures collective alignment (0=random, 1=aligned)
 
@@ -18,6 +19,9 @@ export class VicsekModel3D extends Model3D {
 
   separationDistance = 0.5; // minimum distance to maintain between agents
   separationStrength = 0.8; // strength of separation force
+
+  cohesionRadius = 2.0; // radius for calculating center of mass for cohesion
+  cohesionStrength = 0.2; // strength of cohesion force (attraction to group center)
 
   constructor() {
     // set up cubic boundary conditions - AgentScript requires integer bounds
@@ -64,7 +68,9 @@ export class VicsekModel3D extends Model3D {
         z: Math.cos(theta)
       };
 
-      agent.velocity = this.velocity;
+      // assign slightly variable velocity (base ± variation)
+      const variation = (Math.random() - 0.5) * 2 * this.velocityVariation;
+      agent.velocity = this.velocity * (1 + variation);
 
       // set visual rendering size
       agent.size = 0.03;
@@ -86,7 +92,8 @@ export class VicsekModel3D extends Model3D {
    * 2. Calculate mean direction of neighbors (including self)
    * 3. Add boundary avoidance forces
    * 4. Add separation forces
-   * 5. Add random noise to create realistic flocking behavior
+   * 5. Add cohesion forces (attraction to group center)
+   * 6. Add random noise to create realistic flocking behavior
    */
   updateDirections() {
     const agents: VicsekAgent3D[] = [];
@@ -114,6 +121,12 @@ export class VicsekModel3D extends Model3D {
       avgDirection.x += separationForce.x;
       avgDirection.y += separationForce.y;
       avgDirection.z += separationForce.z;
+
+      // add cohesion force to maintain group cohesion
+      const cohesionForce = this.calculateCohesion(agent, agents);
+      avgDirection.x += cohesionForce.x;
+      avgDirection.y += cohesionForce.y;
+      avgDirection.z += cohesionForce.z;
 
       // add random noise in 3D space
       const noise = this.generate3DNoise();
@@ -227,6 +240,7 @@ export class VicsekModel3D extends Model3D {
   /**
    * Calculates boundary avoidance force for agents near world edges in 3D
    * Creates repulsive force vectors pointing away from the nearest boundaries
+   * Adds randomness to prevent synchronized turning
    * @param agent The agent to calculate avoidance for
    * @returns 3D force vector to avoid boundaries
    */
@@ -244,36 +258,42 @@ export class VicsekModel3D extends Model3D {
     const distToFront = halfSize - agent.z;
     const distToBack = agent.z + halfSize;
 
-    // add repulsive forces if within avoidance distance
+    // add repulsive forces if within avoidance distance (with random variation)
     if (distToRight < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToRight) / this.boundaryAvoidanceDistance;
-      forceX -= this.boundaryAvoidanceStrength * strength;
+      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      forceX -= this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToLeft < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToLeft) / this.boundaryAvoidanceDistance;
-      forceX += this.boundaryAvoidanceStrength * strength;
+      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      forceX += this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToTop < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToTop) / this.boundaryAvoidanceDistance;
-      forceY -= this.boundaryAvoidanceStrength * strength;
+      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      forceY -= this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToBottom < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToBottom) / this.boundaryAvoidanceDistance;
-      forceY += this.boundaryAvoidanceStrength * strength;
+      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      forceY += this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToFront < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToFront) / this.boundaryAvoidanceDistance;
-      forceZ -= this.boundaryAvoidanceStrength * strength;
+      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      forceZ -= this.boundaryAvoidanceStrength * strength * randomFactor;
     }
     if (distToBack < this.boundaryAvoidanceDistance) {
       const strength =
         (this.boundaryAvoidanceDistance - distToBack) / this.boundaryAvoidanceDistance;
-      forceZ += this.boundaryAvoidanceStrength * strength;
+      const randomFactor = 0.8 + Math.random() * 0.4; // ±20% variation
+      forceZ += this.boundaryAvoidanceStrength * strength * randomFactor;
     }
 
     // apply gradual adjustment factor
@@ -334,15 +354,72 @@ export class VicsekModel3D extends Model3D {
   }
 
   /**
-   * Moves all agents forward at constant velocity in their current 3D direction
+   * Calculates cohesion force to steer agent toward the center of nearby agents
+   * Creates attractive force toward the average position of neighbors within cohesion radius
+   * @param agent The focal agent
+   * @param agents Array of all agents to search through
+   * @returns 3D force vector toward local group center
+   */
+  calculateCohesion(
+    agent: VicsekAgent3D,
+    agents: VicsekAgent3D[]
+  ): { x: number; y: number; z: number } {
+    let centerX = 0;
+    let centerY = 0;
+    let centerZ = 0;
+    let count = 0;
+
+    // find all agents within cohesion radius and calculate their center of mass
+    for (const other of agents) {
+      if (other === agent) continue;
+      const distance = this.calculateDistance3D(agent, other);
+
+      if (distance <= this.cohesionRadius) {
+        centerX += other.x;
+        centerY += other.y;
+        centerZ += other.z;
+        count++;
+      }
+    }
+
+    // if no neighbors, no cohesion force
+    if (count === 0) {
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    // calculate average position (center of mass)
+    centerX /= count;
+    centerY /= count;
+    centerZ /= count;
+
+    // calculate direction toward center
+    const dx = centerX - agent.x;
+    const dy = centerY - agent.y;
+    const dz = centerZ - agent.z;
+
+    // normalize and scale by cohesion strength
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (distance > 0) {
+      return {
+        x: (dx / distance) * this.cohesionStrength,
+        y: (dy / distance) * this.cohesionStrength,
+        z: (dz / distance) * this.cohesionStrength
+      };
+    }
+
+    return { x: 0, y: 0, z: 0 };
+  }
+
+  /**
+   * Moves all agents forward at their individual velocity in their current 3D direction
    * Applies boundary constraints to keep agents within world bounds
    */
   updatePositions() {
     this.turtles.ask((agent: VicsekAgent3D) => {
-      // move agent forward: velocity * direction vector
-      const newX = agent.x + this.velocity * agent.direction.x;
-      const newY = agent.y + this.velocity * agent.direction.y;
-      const newZ = agent.z + this.velocity * agent.direction.z;
+      // move agent forward: agent's individual velocity * direction vector
+      const newX = agent.x + agent.velocity * agent.direction.x;
+      const newY = agent.y + agent.velocity * agent.direction.y;
+      const newZ = agent.z + agent.velocity * agent.direction.z;
 
       // clamp positions to world boundaries (no wrapping)
       const halfSize = this.worldSize / 2;
@@ -432,5 +509,13 @@ export class VicsekModel3D extends Model3D {
    */
   setSeparationStrength(strength: number) {
     this.separationStrength = strength;
+  }
+
+  /**
+   * Changes the strength of cohesion force
+   * @param strength New cohesion strength
+   */
+  setCohesionStrength(strength: number) {
+    this.cohesionStrength = strength;
   }
 }

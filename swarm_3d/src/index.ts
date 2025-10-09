@@ -22,6 +22,8 @@ let separationDistanceSlider: HTMLInputElement;
 let separationDistanceValue: HTMLElement;
 let separationStrengthSlider: HTMLInputElement;
 let separationStrengthValue: HTMLElement;
+let cohesionStrengthSlider: HTMLInputElement;
+let cohesionStrengthValue: HTMLElement;
 
 function initializeUI() {
   // get UI elements
@@ -45,6 +47,8 @@ function initializeUI() {
     "separation-strength-slider"
   ) as HTMLInputElement;
   separationStrengthValue = document.getElementById("separation-strength-value") as HTMLElement;
+  cohesionStrengthSlider = document.getElementById("cohesion-strength-slider") as HTMLInputElement;
+  cohesionStrengthValue = document.getElementById("cohesion-strength-value") as HTMLElement;
 
   if (
     !nSlider ||
@@ -60,7 +64,9 @@ function initializeUI() {
     !separationDistanceSlider ||
     !separationDistanceValue ||
     !separationStrengthSlider ||
-    !separationStrengthValue
+    !separationStrengthValue ||
+    !cohesionStrengthSlider ||
+    !cohesionStrengthValue
   ) {
     throw new Error("Required UI elements not found");
   }
@@ -109,6 +115,12 @@ function initializeUI() {
     const newStrength = parseFloat(separationStrengthSlider.value);
     separationStrengthValue.textContent = newStrength.toFixed(1);
     model.setSeparationStrength(newStrength);
+  });
+
+  cohesionStrengthSlider.addEventListener("input", () => {
+    const newStrength = parseFloat(cohesionStrengthSlider.value);
+    cohesionStrengthValue.textContent = newStrength.toFixed(1);
+    model.setCohesionStrength(newStrength);
   });
 
   // reset button event listeners
