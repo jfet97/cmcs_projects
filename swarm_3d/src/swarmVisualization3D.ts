@@ -118,20 +118,18 @@ export class SwarmVisualization3D {
   }
 
   /**
-   * Calculates HSL color based on 3D direction vector
-   * Maps azimuthal angle φ = atan2(y, x) to hue [0°, 360°]
+   * Calculates RGB color based on full 3D direction vector
+   * Maps direction components to color channels: (x, y, z) → (R, G, B)
+   * Each component normalized from [-1, 1] to [0, 1]
    */
   private getColorFromDirection(direction: { x: number; y: number; z: number }): number {
-    // convert 3D direction to HSL hue using azimuthal angle: φ = atan2(y, x)
-    // shift to [0°, 360°] range: hue = (φ × 180/π + 180) mod 360
-    const hue = ((Math.atan2(direction.y, direction.x) * 180) / Math.PI + 180) % 360;
+    // map direction components [-1, 1] to RGB [0, 1]
+    // R = (x + 1) / 2, G = (y + 1) / 2, B = (z + 1) / 2
+    const r = (direction.x + 1) / 2;
+    const g = (direction.y + 1) / 2;
+    const b = (direction.z + 1) / 2;
 
-    // convert HSL to RGB for Three.js color
-    const saturation = 0.8;
-    const lightness = 0.6;
-
-    const color = new THREE.Color();
-    color.setHSL(hue / 360, saturation, lightness);
+    const color = new THREE.Color(r, g, b);
     return color.getHex();
   }
 
