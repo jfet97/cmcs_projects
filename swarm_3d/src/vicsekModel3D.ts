@@ -11,6 +11,7 @@ export class VicsekModel3D extends Model3D {
   velocity = 0.03; // base speed for all agents
   velocityVariation = 0.15; // velocity variation range (±15%)
   noiseLevel = 0; // η parameter: angular noise strength
+  noiseApplicationInterval = 20; // average interval for noise (each agent has 1/N probability per tick)
   orderParameter = 0; // Φ: measures collective alignment (0=random, 1=aligned)
 
   worldSize = 24; // cubic world dimensions with boundary avoidance
@@ -134,11 +135,18 @@ export class VicsekModel3D extends Model3D {
       avgDirection.y += cohesionForce.y;
       avgDirection.z += cohesionForce.z;
 
-      // add random noise in 3D space
-      const noise = this.generate3DNoise();
-      avgDirection.x += noise.x * this.noiseLevel;
-      avgDirection.y += noise.y * this.noiseLevel;
-      avgDirection.z += noise.z * this.noiseLevel;
+      // add random noise in 3D space (stochastic: each agent has 1/N chance per tick)
+      // this creates smoother trajectories with asynchronous perturbations
+      const noiseProbability =
+        this.noiseApplicationInterval === 0 ? 1.0 : 1.0 / this.noiseApplicationInterval;
+      const shouldApplyNoise = Math.random() < noiseProbability;
+
+      if (shouldApplyNoise && this.noiseLevel > 0) {
+        const noise = this.generate3DNoise();
+        avgDirection.x += noise.x * this.noiseLevel;
+        avgDirection.y += noise.y * this.noiseLevel;
+        avgDirection.z += noise.z * this.noiseLevel;
+      }
 
       // normalize the resulting direction vector
       const magnitude = Math.sqrt(
