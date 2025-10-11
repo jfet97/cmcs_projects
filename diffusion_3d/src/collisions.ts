@@ -6,7 +6,7 @@ interface SpatialGridEntry {
   links: `${number},${number},${number}`[];
 }
 
-// a spacial grid is a map where the key is a string representation of the cell coordinates
+// a spatial grid is a map where the key is a string representation of the cell coordinates
 export interface SpatialGrid {
   grid: Map<`${number},${number},${number}`, SpatialGridEntry>;
   size: number;
@@ -39,7 +39,7 @@ export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGr
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           for (let dz = -1; dz <= 1; dz++) {
-            if (dx === 0 && dy === 0 && dz === 0) continue; // skip the current cell
+            if (dx === 0 && dy === 0 && dz === 0) continue; // skip the center cell
             const key = hash(cellX + dx, cellY + dy, cellZ + dz);
             links.push(key);
           }
@@ -94,7 +94,7 @@ function updateParticleInGrid(
   const oldKey = hash(oldCellX, oldCellY, oldCellZ);
   const newKey = hash(newCellX, newCellY, newCellZ);
 
-  // remove from old cell
+  // remove particle from old grid cell
   if (grid.has(oldKey)) {
     const turtlesInOldCell = grid.get(oldKey)!;
     const index = turtlesInOldCell.data.indexOf(turtle);
@@ -103,13 +103,13 @@ function updateParticleInGrid(
     }
   }
 
-  // add to new cell
+  // add particle to new grid cell
   if (!grid.has(newKey)) {
     const links: SpatialGridEntry["links"] = [];
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         for (let dz = -1; dz <= 1; dz++) {
-          if (dx === 0 && dy === 0 && dz === 0) continue; // skip the current cell
+          if (dx === 0 && dy === 0 && dz === 0) continue; // skip the center cell
           const key = hash(newX + dx, newY + dy, newZ + dz);
           links.push(key);
         }
@@ -123,7 +123,7 @@ function updateParticleInGrid(
 }
 
 /**
- * Retrieves all BrownianParticleTurtle instances located in the 3x3x3 grid cells surrounding a given (x, y, z) position.
+ * Retrieves all BrownianParticleTurtle instances located in the 3×3×3 grid cells surrounding a given (x, y, z) position.
  *
  * @param x - The x-coordinate of the position to search around.
  * @param y - The y-coordinate of the position to search around.
@@ -144,7 +144,7 @@ function getNearbyTurtles(
 
   const key = hash(mainCellX, mainCellY, mainCellZ);
 
-  // iterate through the 3x3x3 grid cells surrounding the main cell
+  // iterate through the 3×3×3 grid cells surrounding the main cell
   for (const link of grid.get(key)?.links ?? []) {
     nearbyTurtles.push(...(grid.get(link)?.data ?? []));
   }
@@ -187,9 +187,13 @@ export function moveParticleWithOptimizedCollisions(
   world: Model3D["world"],
   { grid, size }: SpatialGrid
 ) {
-  // casual movement
-  const theta = Math.acos(1 - 2 * Math.random()); // angolo polare [0, pi]
-  const phi = Math.random() * 2 * Math.PI; // angolo azimutale [0, 2pi]
+  /**
+   * Random walk step in 3D using spherical coordinates
+   * θ ∈ [0, π] (polar angle), φ ∈ [0, 2π] (azimuthal angle)
+   * Displacement: Δr = stepSize × (sin θ cos φ, sin θ sin φ, cos θ)
+   */
+  const theta = Math.acos(1 - 2 * Math.random()); // polar angle [0, π] with uniform distribution
+  const phi = Math.random() * 2 * Math.PI; // azimuthal angle [0, 2π]
 
   const dx = turtle.stepSize * Math.sin(theta) * Math.cos(phi);
   const dy = turtle.stepSize * Math.sin(theta) * Math.sin(phi);
@@ -210,45 +214,50 @@ export function moveParticleWithOptimizedCollisions(
     // ignore self-collision
     if (other === turtle) continue;
 
+    // euclidean distance in 3D: d = √[(x₂-x₁)² + (y₂-y₁)² + (z₂-z₁)²]
     const distance = Math.sqrt(
       (other.x - newX) ** 2 + (other.y - newY) ** 2 + (other.z - newZ) ** 2
     );
     const minDistance = turtle.size + other.size;
 
-    // check for actual collision
+    // collision occurs when d < r₁ + r₂
     if (distance < minDistance) {
-      // collision detected: simulate bounce
-      // this is a simple bounce, not a perfect elastic collision which would conserve momentum
-      // but it is visually effective and performant
+      /**
+       * Simple bounce collision in 3D
+       * Uses unit vector in direction away from collision point
+       * Bounce direction: (r₁ - r₂) / |r₁ - r₂|
+       * No momentum/energy conservation (particles have no velocity memory)
+       */
 
-      // in 3D, instead of angles, we use a normalized direction vector (a "unit vector")
-      // the bounce vector points from the 'other' turtle to this 'turtle'
+      // compute bounce vector pointing from 'other' particle to this particle
       const bounceVectorX = turtle.x - other.x;
       const bounceVectorY = turtle.y - other.y;
       const bounceVectorZ = turtle.z - other.z;
 
-      // 1. check for distance > 0 to avoid a division by zero error if particles are perfectly overlapped
-      // 2. normalize the vector by dividing by the current distance
+      // normalize the bounce vector to get unit direction
       if (distance > 0) {
         const unitBounceX = bounceVectorX / distance;
         const unitBounceY = bounceVectorY / distance;
         const unitBounceZ = bounceVectorZ / distance;
 
-        // move away from the collision instead of taking the original step
-        // we move by 'stepSize' along the calculated bounce direction.
+        // move away from the collision along the bounce direction
         newX = turtle.x + turtle.stepSize * unitBounceX;
         newY = turtle.y + turtle.stepSize * unitBounceY;
         newZ = turtle.z + turtle.stepSize * unitBounceZ;
       } else {
-        // let the original random move happen, which will separate the two turtles
+        // particles are perfectly overlapped; allow original random move to separate them
       }
 
-      // early exit the loop after handling the first collision
+      // early exit after handling the first collision
       // break;
     }
   }
 
-  // handle boundary conditions
+  /**
+   * Reflective boundary conditions at domain edges
+   * When particle crosses boundary at x_max: x_new = x_max - (x - x_max)
+   * This preserves distance from boundary (mirror reflection)
+   */
   if (newX > world.maxX) {
     newX = world.maxX - (newX - world.maxX);
   } else if (newX < world.minX) {
@@ -267,7 +276,7 @@ export function moveParticleWithOptimizedCollisions(
     newZ = world.minZ + (world.minZ - newZ);
   }
 
-  // update the turtle's position
+  // update the turtle's position and spatial grid
   turtle.setxyz(newX, newY, newZ);
   updateParticleInGrid(turtle, oldX, oldY, oldZ, newX, newY, newZ, { grid, size });
 }

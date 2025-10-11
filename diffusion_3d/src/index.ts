@@ -6,14 +6,14 @@ document.addEventListener("DOMContentLoaded", () => {
     throw new Error("Canvas element with id 'world' not found");
   }
 
-  // TOTAL WORLD SIZE HERE
+  // simulation world parameters
   const SIZE = 150;
   const WORLD_WIDTH = SIZE;
   const WORLD_HEIGHT = SIZE;
   const WORLD_DEPTH = SIZE;
   const NUM_PARTICLES = 20000;
 
-  // world bounds object
+  // world bounds (centered coordinate system)
   const bounds = {
     minX: Math.floor(-WORLD_WIDTH / 2),
     maxX: Math.floor(WORLD_WIDTH / 2),
@@ -25,12 +25,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const model = new BrownianModel(bounds, WORLD_WIDTH, WORLD_HEIGHT, WORLD_DEPTH);
 
+  // initialize model with center-based particle distribution (MSD plateau: L²/4 for 3D)
   model.startup("center", NUM_PARTICLES);
 
-  // --- animation Loop ---
+  // animation loop with frame rate limiting
   const targetFPS = 60;
   const frameInterval = 1000 / targetFPS;
-  let lastTime = performance.now(); // Use performance.now for higher precision
+  let lastTime = performance.now(); // use performance.now for higher precision
 
   const animate = (currentTime: number) => {
     requestAnimationFrame(animate);

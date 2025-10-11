@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     throw new Error("Canvas element with id 'world' not found");
   }
 
-  // set the bounds
+  // set the bounds (centered coordinate system)
   const halfWidth = worldElement.width / 2;
   const halfHeight = worldElement.height / 2;
   const model = new BrownianModel(
@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     worldElement.height
   );
 
-  // start the model with custom view
+  // initialize model with center-based particle distribution (MSD plateau: L²/6)
   model.startup("center");
 
   const targetFPS = 30;
@@ -36,6 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // start the animation
+  // start the animation loop
   requestAnimationFrame(animate);
 });

@@ -20,7 +20,7 @@ export class BrownianModel extends Model {
   chart!: MSDChart;
   simulation!: Simulation;
 
-  // to avoid names collisions
+  // to avoid name collisions
   viewWidth: number;
   viewHeight: number;
 
@@ -35,16 +35,24 @@ export class BrownianModel extends Model {
   }
 
   beginFromCenter(maxRadius = 10) {
-    // the turtle will start quite near the center => plateau L^2 / 6
-    const radius = Math.sqrt(Math.random()) * maxRadius; // max radius
-    const angle = Math.random() * 2 * Math.PI; // random angle
+    /**
+     * Particles start near the center, demonstrating confined diffusion
+     * Expected MSD plateau: L²/6 for 2D radial distribution
+     * Using polar coordinates with sqrt(random) ensures uniform radial distribution
+     */
+    const radius = Math.sqrt(Math.random()) * maxRadius; // uniform radial distribution
+    const angle = Math.random() * 2 * Math.PI; // random angle [0, 2π]
     const x = radius * Math.cos(angle);
     const y = radius * Math.sin(angle);
     return [x, y] as const;
   }
 
   beginRandomly() {
-    // start randomly in the canvas => plateau L^2 / 3
+    /**
+     * Particles start randomly distributed across the entire domain
+     * Expected MSD plateau: L²/3 for 2D uniform distribution
+     * This represents diffusion in an unbounded system (before hitting walls)
+     */
     const x = (Math.random() - 0.5) * this.viewWidth;
     const y = (Math.random() - 0.5) * this.viewHeight;
     return [x, y] as const;
@@ -77,7 +85,7 @@ export class BrownianModel extends Model {
       turtle.shape = "circle";
       turtle.size = TURTLE_SIZE;
 
-      // store initial position
+      // store initial position for MSD calculation: MSD = ⟨(r(t) - r(0))²⟩
       turtle.initialState = { x0: turtle.x, y0: turtle.y };
     });
 
@@ -93,18 +101,22 @@ export class BrownianModel extends Model {
       return;
     }
 
-    // to ensure that two turtles that are touching (i.e., at most diameter distance apart) are at most in adjacent cells, the cell side must be at least as large as the diameter.
+    /**
+     * Spatial grid optimization for collision detection
+     * Cell size = 2×radius ensures particles within collision range are in adjacent cells
+     * This reduces collision checks from O(N²) to O(N×k) where k ≈ 9 cells
+     */
     const grid = createSpatialGrid(this.turtles, TURTLE_SIZE * 2);
 
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
-      // should be better with high particles density
+      // optimized collision detection for high particle density (O(N×k) vs O(N²))
       moveParticleWithOptimizedCollisions(turtle, this.world, grid);
 
-      // more realistic
+      // alternative: more realistic elastic collisions (conserves momentum, higher computational cost)
       // moveParticleWithElasticCollision(turtle, this.world, this.turtles);
     });
 
-    // update the chart and draw particles
+    // update MSD chart every 10 ticks and render particles
     this.chart.plot(this.ticks, 10);
     this.simulation.drawParticles();
   }

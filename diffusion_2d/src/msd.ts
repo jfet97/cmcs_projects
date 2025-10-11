@@ -61,10 +61,16 @@ export class MSDChart {
 
   plot(ticks: number, skip = 1) {
     if (this.turtles.length === 0 || ticks % skip !== 0) {
-      // for performances reason, like if skip == 10 then we skip 9 ticks out of 10
+      // performance optimization: if skip = 10, update only every 10th tick
       return;
     }
 
+    /**
+     * Mean Squared Displacement calculation:
+     * MSD(t) = ⟨[r(t) - r(0)]²⟩ = (1/N) Σᵢ [(xᵢ(t) - xᵢ(0))² + (yᵢ(t) - yᵢ(0))²]
+     *
+     * For 2D Brownian motion: MSD(t) = 4Dt where D is the diffusion coefficient
+     */
     let totalSquaredDisplacement = 0;
 
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
@@ -77,7 +83,7 @@ export class MSDChart {
     this.msdData.push(msd);
 
     if (this.chart.data.labels) {
-      // uses ticks as x axis
+      // use simulation ticks as x-axis values
       this.chart.data.labels.push(ticks);
     }
     this.chart.data.datasets[0].data.push(msd);

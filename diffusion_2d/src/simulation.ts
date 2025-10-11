@@ -32,7 +32,7 @@ export class Simulation {
     this.ctx.save();
     this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
 
-    // Disegna ogni particella
+    // render each particle as a circle
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
       this.ctx.beginPath();
       this.ctx.arc(turtle.x, turtle.y, turtle.size, 0, 2 * Math.PI);

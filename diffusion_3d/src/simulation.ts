@@ -31,7 +31,7 @@ export class Simulation {
     this.turtles = turtles;
     const numParticles = turtles.length;
 
-    // --- Main Scene Setup ---
+    // main scene setup for 3D rendering
     this.scene = new THREE.Scene();
     const aspectRatio = this.canvas.clientWidth / this.canvas.clientHeight;
     this.camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
@@ -42,7 +42,7 @@ export class Simulation {
     this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setClearColor(0xffffff);
 
-    // --- Particle System Setup ---
+    // particle system setup using Three.js Points for efficient rendering
     const geometry = new THREE.BufferGeometry();
     this.positions = new Float32Array(numParticles * 3);
     geometry.setAttribute("position", new THREE.BufferAttribute(this.positions, 3));
@@ -50,29 +50,30 @@ export class Simulation {
     this.points = new THREE.Points(geometry, material);
     this.scene.add(this.points);
 
-    // --- Movable Camera (OrbitControls) Setup ---
+    // orbit controls for interactive camera manipulation
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true; // gives a nice sense of weight
+    this.controls.enableDamping = true; // smooth camera movement
     this.controls.dampingFactor = 0.05;
 
     this.controls.enableZoom = true;
     this.controls.zoomSpeed = 1.5;
 
-    // --- Orientation Axes Helper Setup (Second Scene) ---
+    // orientation axes helper (rendered in corner viewport)
     this.axesScene = new THREE.Scene();
-    this.axesHelper = new THREE.AxesHelper(5); // the number defines the size of the axes
+    this.axesHelper = new THREE.AxesHelper(5); // axis length
     this.axesScene.add(this.axesHelper);
 
-    // a separate camera for the axes helper
-    this.axesCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100); // aspect ratio is 1 for a square viewport
+    // separate camera for the axes helper overlay
+    this.axesCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100); // square aspect ratio
     this.axesCamera.position.set(10, 10, 10);
     this.axesCamera.lookAt(0, 0, 0);
-    this.axesCamera.up = this.camera.up; // ensure the up direction is the same
+    this.axesCamera.up = this.camera.up; // match main camera orientation
   }
 
   /**
-   * adjusts the camera's Z position to ensure the entire specified
-   * world width and height are visible for the initial view
+   * Adjusts camera position to frame the entire simulation world
+   * Calculates required distance based on field of view and world dimensions
+   * Formula: distance = (dimension/2) / tan(FOV/2)
    */
   public adjustCameraToShowWorld() {
     const fovInRadians = (this.camera.fov * Math.PI) / 180;
@@ -80,15 +81,15 @@ export class Simulation {
     const distanceForWidth =
       this.dimensions.width / 2 / (Math.tan(fovInRadians / 2) * this.camera.aspect);
 
-    this.camera.position.x = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 5% buffer
-    this.camera.position.y = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 5% buffer
-    this.camera.position.z = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 5% buffer
-    this.controls.update(); // important to update controls after manual camera change
+    this.camera.position.x = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 50% buffer
+    this.camera.position.y = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 50% buffer
+    this.camera.position.z = Math.max(distanceForHeight, distanceForWidth) * 1.5; // 50% buffer
+    this.controls.update(); // update controls after manual camera positioning
   }
 
   /**
-   * adds a visible wireframe box to the scene representing the world boundaries
-   * this is very useful for debugging with a moving camera
+   * Adds a visible wireframe box to the scene representing the world boundaries
+   * Useful for spatial reference with interactive camera
    */
   public addWorldBoundaryBox() {
     const geometry = new THREE.BoxGeometry(
@@ -102,7 +103,8 @@ export class Simulation {
   }
 
   /**
-   * renders the small axes helper in the bottom-left corner
+   * Renders the orientation axes helper in the bottom-left corner
+   * Uses separate viewport with scissor test to overlay on main scene
    */
   private renderAxes() {
     this.axesCamera.position.copy(this.camera.position);
@@ -119,16 +121,16 @@ export class Simulation {
 
     this.renderer.render(this.axesScene, this.axesCamera);
 
-    // reset viewport and scissor
+    // reset viewport and scissor for next render
     this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, this.canvas.clientWidth, this.canvas.clientHeight);
   }
 
   public drawParticles() {
-    // update orbit controls (handles damping)
+    // update orbit controls (applies damping to camera movement)
     this.controls.update();
 
-    // update the positions buffer from the turtles' current state
+    // update particle positions buffer from current turtle states
     let i = 0;
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
       const index = i * 3;
@@ -138,20 +140,20 @@ export class Simulation {
       i++;
     });
 
-    // tells the GPU that the positions have changed
+    // notify GPU that position buffer has been updated
     this.points.geometry.attributes.position.needsUpdate = true;
 
-    // first render the main scene
+    // render the main scene
     this.renderer.render(this.scene, this.camera);
 
-    // stop the renderer from clearing the screen before the next render
+    // disable auto-clear to render axes helper on top
     this.renderer.autoClear = false;
-    this.renderer.clearDepth(); // clear only the depth buffer
+    this.renderer.clearDepth(); // clear depth buffer only
 
-    // render the axes helper on top in the corner
+    // render the axes helper overlay in the corner
     this.renderAxes();
 
-    // re-enable auto-clearing for the next frame
+    // re-enable auto-clearing for next frame
     this.renderer.autoClear = true;
   }
 }

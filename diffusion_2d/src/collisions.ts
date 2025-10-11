@@ -1,7 +1,7 @@
 import { Model, Turtles } from "agentscript";
 import { type BrownianParticleTurtle } from "./brownianModel";
 
-// a spacial grid is a map where the key is a string representation of the cell coordinates
+// a spatial grid is a map where the key is a string representation of the cell coordinates
 export interface SpatialGrid {
   grid: Map<`${number},${number}`, BrownianParticleTurtle[]>;
   size: number;
@@ -53,7 +53,7 @@ function getNearbyTurtles(
   const mainCellX = Math.floor(x / size);
   const mainCellY = Math.floor(y / size);
 
-  // iterate through the 3x3 grid cells surrounding the main cell
+  // iterate through the 3×3 grid cells surrounding the main cell
   for (let i = -1; i <= 1; i++) {
     for (let j = -1; j <= 1; j++) {
       const key = `${mainCellX + i},${mainCellY + j}` as const;
@@ -101,7 +101,10 @@ export function moveParticleWithOptimizedCollisions(
   world: Model["world"],
   { grid, size }: SpatialGrid
 ) {
-  // casual movement
+  /**
+   * Random walk step: θ ~ U[0, 2π]
+   * Displacement: Δr = stepSize × (cos θ, sin θ)
+   */
   const angle = Math.random() * 2 * Math.PI;
   const dx = turtle.stepSize * Math.cos(angle);
   const dy = turtle.stepSize * Math.sin(angle);
@@ -116,16 +119,20 @@ export function moveParticleWithOptimizedCollisions(
     // ignore self-collision
     if (other === turtle) continue;
 
+    // euclidean distance: d = √[(x₂-x₁)² + (y₂-y₁)²]
     const distance = Math.sqrt((other.x - newX) ** 2 + (other.y - newY) ** 2);
     const minDistance = turtle.size + other.size;
 
-    // check for actual collision
+    // collision occurs when d < r₁ + r₂
     if (distance < minDistance) {
-      // collision detected: simulate bounce
-      // this is a simple bounce, not a perfect elastic collision which would conserve momentum
-      // but it is visually effective and performant
+      /**
+       * Simple bounce collision (not physically accurate elastic collision)
+       * - Collision angle φ = atan2(Δy, Δx)
+       * - Bounce direction: φ + π (180° reversal)
+       * - No momentum/energy conservation (particles have no velocity memory)
+       */
       const collisionAngle = Math.atan2(other.y - turtle.y, other.x - turtle.x);
-      const bounceAngle = collisionAngle + Math.PI; // invert the direction of movement
+      const bounceAngle = collisionAngle + Math.PI; // 180° reversal
 
       // move away from the collision instead of taking the original step
       newX = turtle.x + turtle.stepSize * Math.cos(bounceAngle);
@@ -135,7 +142,11 @@ export function moveParticleWithOptimizedCollisions(
     }
   }
 
-  // handle boundary conditions
+  /**
+   * Reflective boundary conditions at domain edges
+   * When particle crosses boundary at x_max: x_new = x_max - (x - x_max)
+   * This preserves distance from boundary (mirror reflection)
+   */
   if (newX > world.maxX) {
     newX = world.maxX - (newX - world.maxX);
   } else if (newX < world.minX) {

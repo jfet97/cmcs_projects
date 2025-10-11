@@ -23,7 +23,7 @@ export class BrownianModel extends Model3D {
   simulation!: Simulation;
   grid!: SpatialGrid;
 
-  // to avoid names collisions
+  // to avoid name collisions
   viewWidth: number;
   viewHeight: number;
   viewDepth: number;
@@ -48,10 +48,15 @@ export class BrownianModel extends Model3D {
   }
 
   beginFromCenter(maxRadius = 10) {
-    // the turtle will start quite near the center => plateau L^2 / 4
-    const radius = Math.cbrt(Math.random()) * maxRadius;
-    const theta = Math.acos(1 - 2 * Math.random());
-    const phi = Math.random() * 2 * Math.PI;
+    /**
+     * Particles start near the center in 3D space
+     * Expected MSD plateau: L²/4 for 3D radial distribution
+     * Using spherical coordinates with cbrt(random) ensures uniform radial distribution
+     * θ ∈ [0, π] (polar angle), φ ∈ [0, 2π] (azimuthal angle)
+     */
+    const radius = Math.cbrt(Math.random()) * maxRadius; // uniform 3D radial distribution
+    const theta = Math.acos(1 - 2 * Math.random()); // polar angle with uniform distribution
+    const phi = Math.random() * 2 * Math.PI; // azimuthal angle [0, 2π]
     const x = radius * Math.sin(theta) * Math.cos(phi);
     const y = radius * Math.sin(theta) * Math.sin(phi);
     const z = radius * Math.cos(theta);
@@ -59,10 +64,14 @@ export class BrownianModel extends Model3D {
   }
 
   beginRandomly() {
-    // start randomly in the world => plateau L^2 / 2
+    /**
+     * Particles start randomly distributed across the entire 3D domain
+     * Expected MSD plateau: L²/2 for 3D uniform distribution
+     * This represents diffusion in an unbounded 3D system
+     */
     const x = (Math.random() - 0.5) * this.viewWidth;
     const y = (Math.random() - 0.5) * this.viewHeight;
-    const z = (Math.random() - 0.5) * this.viewDepth; // assuming 3D
+    const z = (Math.random() - 0.5) * this.viewDepth;
     return [x, y, z] as const;
   }
 
@@ -93,13 +102,13 @@ export class BrownianModel extends Model3D {
       turtle.shape = "circle";
       turtle.size = TURTLE_SIZE;
 
-      // store initial position
+      // store initial position for MSD calculation: MSD = ⟨(r(t) - r(0))²⟩
       turtle.initialState = { x0: turtle.x, y0: turtle.y, z0: turtle.z };
     });
 
     this.chart = new MSDChart(this.turtles);
 
-    // Three.js 3D simulation view
+    // initialize Three.js 3D visualization
     this.simulation = new Simulation(this.turtles, {
       depth: this.viewDepth,
       height: this.viewHeight,
@@ -109,10 +118,14 @@ export class BrownianModel extends Model3D {
     // position the camera to frame the entire world
     this.simulation.adjustCameraToShowWorld();
 
-    // a visual box to see the world boundaries
+    // add visual wireframe box to show world boundaries
     this.simulation.addWorldBoundaryBox();
 
-    // to ensure that two turtles that are touching (i.e., at most diameter distance apart) are at most in adjacent cells, the cell side must be at least as large as the diameter.
+    /**
+     * Spatial grid optimization for 3D collision detection
+     * Cell size = 2×radius ensures particles within collision range are in adjacent cells
+     * This reduces collision checks from O(N²) to O(N×k) where k ≈ 27 cells (3×3×3 cube)
+     */
     this.grid = createSpatialGrid(this.turtles, TURTLE_SIZE * 2);
   }
 
@@ -125,14 +138,14 @@ export class BrownianModel extends Model3D {
     }
 
     this.turtles.ask((turtle: BrownianParticleTurtle) => {
-      // should be better with high particles density
+      // optimized collision detection for high particle density (O(N×k) vs O(N²))
       moveParticleWithOptimizedCollisions(turtle, this.world, this.grid);
 
-      // more realistic
+      // alternative: more realistic elastic collisions (conserves momentum, higher computational cost)
       // moveParticleWithElasticCollision(turtle, this.world, this.turtles);
     });
 
-    // update the chart and draw particles
+    // update MSD chart every 10 ticks and render particles
     this.chart.plot(this.ticks, 10);
     this.simulation.drawParticles();
   }

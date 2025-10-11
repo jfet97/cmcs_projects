@@ -33,7 +33,7 @@ class SpatialHash {
     const gridX = Math.floor(particle.x / this.cellSize);
     const gridY = Math.floor(particle.y / this.cellSize);
 
-    // check 3x3 neighborhood around particle
+    // check 3×3 neighborhood around particle for collision candidates
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
         const key = `${gridX + dx},${gridY + dy}`;
@@ -52,7 +52,7 @@ class SpatialHash {
     const gridX = Math.floor(particle.x / this.cellSize);
     const gridY = Math.floor(particle.y / this.cellSize);
 
-    // check 9x9 neighborhood for large particle (radius 8 + 1.5 = 9.5, cell size 3, need 4 cells radius)
+    // check 9×9 neighborhood for large particle (radius 8 + 1.5 = 9.5, cell size 3, requires 4 cell radius)
     for (let dx = -4; dx <= 4; dx++) {
       for (let dy = -4; dy <= 4; dy++) {
         const key = `${gridX + dx},${gridY + dy}`;
@@ -128,12 +128,12 @@ export function performElasticCollision(
   const distance = Math.sqrt(dx * dx + dy * dy);
   const minDistance = particle1.size + particle2.size;
 
-  // only collide if particles are ACTUALLY touching or overlapping
+  // collision detection: particles must be overlapping (d < r₁ + r₂)
   if (distance >= minDistance) {
     return false;
   }
 
-  // prevent rapid repeated collisions
+  // collision throttling: prevent multiple collisions within minimum interval
   if (
     Math.abs(currentTick - particle1.lastCollisionTick) < CONFIG.PHYSICS.minCollisionInterval ||
     Math.abs(currentTick - particle2.lastCollisionTick) < CONFIG.PHYSICS.minCollisionInterval
@@ -141,44 +141,48 @@ export function performElasticCollision(
     return false;
   }
 
-  // calculate collision normal (unit vector from particle1 to particle2)
+  // compute collision normal (unit vector from particle1 to particle2): n̂ = Δr / |Δr|
   const nx = dx / distance;
   const ny = dy / distance;
 
-  // relative velocity components
+  // relative velocity: v_rel = v₂ - v₁
   const relativeVx = particle2.vx - particle1.vx;
   const relativeVy = particle2.vy - particle1.vy;
 
-  // relative velocity along collision normal
+  // relative velocity component along collision normal: v_rel · n̂
   const relativeVelNormal = relativeVx * nx + relativeVy * ny;
 
-  // skip if particles are separating (no collision needed)
+  // skip if particles are separating (v_rel · n̂ > 0)
   if (relativeVelNormal > 0) return false;
 
   const m1 = particle1.mass;
   const m2 = particle2.mass;
   const totalMass = m1 + m2;
 
-  // velocity components along normal for each particle
+  // project velocities onto collision normal
   const v1_normal = particle1.vx * nx + particle1.vy * ny;
   const v2_normal = particle2.vx * nx + particle2.vy * ny;
 
-  // new normal velocities after elastic collision
-  // conserve momentum and energy
+  /**
+   * Elastic collision formulas (1D along normal):
+   * v₁' = [(m₁-m₂)v₁ + 2m₂v₂] / (m₁+m₂)
+   * v₂' = [(m₂-m₁)v₂ + 2m₁v₁] / (m₁+m₂)
+   * These conserve both momentum (Σmv) and kinetic energy (Σ½mv²)
+   */
   const v1_normal_new = ((m1 - m2) * v1_normal + 2 * m2 * v2_normal) / totalMass;
   const v2_normal_new = ((m2 - m1) * v2_normal + 2 * m1 * v1_normal) / totalMass;
 
-  // change in normal velocity
+  // compute velocity changes along normal direction
   const dv1_normal = v1_normal_new - v1_normal;
   const dv2_normal = v2_normal_new - v2_normal;
 
-  // apply velocity changes
+  // apply velocity changes (tangential components remain unchanged)
   particle1.vx += dv1_normal * nx;
   particle1.vy += dv1_normal * ny;
   particle2.vx += dv2_normal * nx;
   particle2.vy += dv2_normal * ny;
 
-  // separate overlapping particles AFTER velocity calculation
+  // separate overlapping particles to prevent clustering
   const overlap = minDistance - distance;
   if (overlap > 0) {
     const totalSeparation = overlap + CONFIG.PHYSICS.collisionBuffer;
@@ -189,41 +193,46 @@ export function performElasticCollision(
     particle2.setxy(particle2.x + separationX, particle2.y + separationY);
   }
 
-  // update collision tracking
+  // record collision time for throttling
   particle1.lastCollisionTick = currentTick;
   particle2.lastCollisionTick = currentTick;
 
   return true;
 }
 
+/**
+ * Handle elastic boundary reflections
+ * Implements specular reflection at domain walls
+ * Conserves kinetic energy: |v'| = |v|, direction reversed
+ */
 function handleBoundary(
   pos: number,
   vel: number,
   min: number,
   max: number
 ): { pos: number; vel: number } {
-  // perfect elastic boundary reflection - no randomness
-  // conserves energy exactly
-
   if (pos > max) {
-    // perfect elastic reflection: reverse velocity component
+    // reflect position and reverse velocity: x' = x_max - (x - x_max), v' = -|v|
     return { pos: max - (pos - max), vel: -Math.abs(vel) };
   } else if (pos < min) {
-    // perfect elastic reflection: reverse velocity component
+    // reflect position and reverse velocity: x' = x_min + (x_min - x), v' = |v|
     return { pos: min + (min - pos), vel: Math.abs(vel) };
   }
   return { pos, vel };
 }
 
+/**
+ * Update particle position using current velocity
+ * Pure deterministic motion - no artificial noise or thermalization
+ * Thermal motion emerges naturally from inter-particle collisions
+ * Position update: r(t+Δt) = r(t) + v(t)·Δt (Δt = 1)
+ */
 export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
-  // pure deterministic motion - no artificial thermalization
-  // "real" thermal motion emerges from inter-particle collisions only
-
-  // move particle according to current velocity (Newton's 1st law)
+  // ballistic motion along current velocity direction
   const newX = particle.x + particle.vx;
   const newY = particle.y + particle.vy;
 
-  // handle boundary collisions with perfect elastic reflection
+  // handle boundary collisions with elastic reflection
   const radius = particle.size;
   const xResult = handleBoundary(newX, particle.vx, world.minX + radius, world.maxX - radius);
   const yResult = handleBoundary(newY, particle.vy, world.minY + radius, world.maxY - radius);
@@ -233,6 +242,11 @@ export function moveParticle(particle: ElasticParticle, world: Model["world"]) {
   particle.setxy(xResult.pos, yResult.pos);
 }
 
+/**
+ * Detect and resolve all elastic collisions in the system
+ * Uses spatial hashing for O(N) complexity instead of O(N²)
+ * Returns count of collisions involving the large particle
+ */
 export function handleAllCollisions(turtles: Turtles, currentTick: number): number {
   let collisionCount = 0;
   const largeParticle = getLargeParticle(turtles);
@@ -240,16 +254,16 @@ export function handleAllCollisions(turtles: Turtles, currentTick: number): numb
 
   if (!largeParticle) return 0;
 
-  // spatial hash with cell size = small particle radius * 2
+  // spatial hash optimization: cell size = 2×small particle radius
   const spatialHash = new SpatialHash(CONFIG.SMALL_PARTICLES.radius * 2);
 
-  // insert all particles into spatial hash
+  // populate spatial hash with all particles
   spatialHash.insert(largeParticle);
   for (const particle of smallParticles) {
     spatialHash.insert(particle);
   }
 
-  // 1. handle collisions between large particle and small particles using spatial hash
+  // 1. process collisions between large particle and small particles
   const nearbyLarge = spatialHash.getNearbyLarge(largeParticle);
   for (const particle of nearbyLarge) {
     if (!particle.isLarge && particle !== largeParticle) {
@@ -259,13 +273,13 @@ export function handleAllCollisions(turtles: Turtles, currentTick: number): numb
     }
   }
 
-  // 2. handle collisions between small particles using spatial hash
+  // 2. process collisions between small particles (avoid double-counting)
   const checkedPairs = new Set<string>();
   for (const particle of smallParticles) {
     const nearby = spatialHash.getNearby(particle);
     for (const other of nearby) {
       if (other !== particle && !other.isLarge) {
-        // avoid duplicate checks using consistent key generation
+        // generate consistent pair key to avoid checking same pair twice
         const key1 = spatialHash.hash(particle.x, particle.y);
         const key2 = spatialHash.hash(other.x, other.y);
         const pairKey = key1 < key2 ? `${key1}|${key2}` : `${key2}|${key1}`;

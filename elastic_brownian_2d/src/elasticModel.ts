@@ -31,7 +31,7 @@ export class ElasticModel extends Model {
   }
 
   private setupLargeParticle(prevState?: SingleParticleState) {
-    // a single large particle at center
+    // create a single large particle at center position
 
     this.turtles.create(1, (turtle: ElasticParticle) => {
       if (prevState) {
@@ -67,7 +67,7 @@ export class ElasticModel extends Model {
   }
 
   private setupSmallParticles(prevStates?: SingleParticleState[]) {
-    // a lot of small particles around the large particle
+    // create multiple small particles distributed around the large particle
 
     // use only the updated config
     const { count } = CONFIG.SMALL_PARTICLES;
@@ -85,8 +85,8 @@ export class ElasticModel extends Model {
 
     let ctr = 0;
     this.turtles.create(count, (turtle: ElasticParticle) => {
-      // random position avoiding the large particle - use world boundaries consistently
-      // keep initial distance from large particle
+      // random position avoiding the large particle while using world boundaries consistently
+      // maintain minimum initial distance from large particle to avoid immediate collisions
 
       const worldWidth = this.world.maxX - this.world.minX;
       const worldHeight = this.world.maxY - this.world.minY;
@@ -105,8 +105,11 @@ export class ElasticModel extends Model {
 
         turtle.setxy(x, y);
 
-        // initialize velocity using Maxwell-Boltzmann distribution for thermal equilibrium
-        // this provides realistic thermal motion without artificial randomness during simulation
+        /**
+         * Initialize velocities using Maxwell-Boltzmann distribution
+         * For 2D: P(v) ∝ v·exp(-mv²/2kT) where k is Boltzmann constant
+         * This ensures thermal equilibrium from the start without artificial randomness
+         */
         const thermalVelocity = maxwellBoltzmannVelocity2D(
           CONFIG.SMALL_PARTICLES.temperature,
           CONFIG.SMALL_PARTICLES.mass
@@ -131,29 +134,32 @@ export class ElasticModel extends Model {
       return;
     }
 
-    // move particles
+    // update particle positions based on velocity (deterministic motion)
     this.turtles.ask((turtle: ElasticParticle) => {
       moveParticle(turtle, this.world);
     });
 
-    // handle all collisions and count them
+    // detect and resolve all elastic collisions, count collisions with large particle
     const collisionsThisTick = handleAllCollisions(this.turtles, this.ticks);
     this.largeParticleState.collisionCount += collisionsThisTick;
 
-    // update velocity history for autocorrelation analysis
-    // sample velocity every 10 ticks for better autocorrelation measurement
+    /**
+     * Sample velocity history for autocorrelation analysis
+     * Sample every 10 ticks to reduce noise and computational cost
+     * Velocity autocorrelation: C(τ) = ⟨v(t)·v(t+τ)⟩ / ⟨v²⟩
+     */
     if (this.ticks % 10 === 0) {
       this.analysis.updateVelocityHistory(this.largeParticle.vx, this.largeParticle.vy, this.ticks);
     }
 
-    // update analysis
+    // update statistical analysis and charts
     this.analysis.update(this.ticks);
 
-    // update visualization
+    // render visualization
     this.simulation.drawParticles();
   }
 
-  // public methods for external control
+  // public methods for external control (UI interactions)
   public resetSimulation(update: "temperature" | "count" | "all" | "nothing") {
     switch (update) {
       case "all": {
@@ -176,7 +182,7 @@ export class ElasticModel extends Model {
 
         this.setupLargeParticle();
 
-        // restore position and velocity if we had a previous large particle
+        // restore previous large particle state to maintain continuity
         if (savedPosition && savedVelocity) {
           this.largeParticle.setxy(savedPosition.x, savedPosition.y);
           this.largeParticle.vx = savedVelocity.vx;
@@ -189,7 +195,7 @@ export class ElasticModel extends Model {
       }
 
       case "temperature": {
-        // re-initialize all small particles with new Maxwell-Boltzmann distribution
+        // re-sample velocities from Maxwell-Boltzmann distribution at new temperature
         this.turtles.ask((turtle: ElasticParticle) => {
           if (!turtle.isLarge) {
             const thermalVelocity = maxwellBoltzmannVelocity2D(
@@ -208,12 +214,12 @@ export class ElasticModel extends Model {
       }
     }
 
-    // simply reset analysis
+    // reset statistical analysis and collision tracking
     this.analysis.reset();
     this.largeParticleState.collisionCount = 0;
     this.largeParticleState.lastCollisionTick = -CONFIG.PHYSICS.minCollisionInterval;
 
-    // reset tick counter so everything restarts from zero
+    // reset simulation time to t=0
     this.ticks = 0;
   }
 
