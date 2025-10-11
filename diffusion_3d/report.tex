@@ -1,0 +1,267 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{3D Brownian Motion Simulation:\\Mathematical Foundations and Implementation}
+\author{Andrea Simone Costa}
+\date{October 11, 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This project extends the classical 2D Brownian motion simulation to three dimensions, providing a more realistic representation of particle diffusion in physical systems. While the fundamental principles remain the same, the 3D implementation introduces additional mathematical complexity in random walk generation, collision detection, and visualization. The simulation manages 20000 particles performing random walks in a bounded 3D domain, with optimized spatial grid collision detection and interactive Three.js visualization.
+
+\section{Mathematical Background}
+
+\subsection{Random Walk in 3D Space}
+
+Unlike the 2D case where random directions are easily parameterized by a single angle, 3D random walks require careful treatment to ensure uniform directional distribution. The simulation uses spherical coordinates with two angles:
+
+\begin{itemize}
+\item $\theta \in [0, \pi]$: polar angle (angle from the positive z-axis)
+\item $\phi \in [0, 2\pi)$: azimuthal angle (angle in the xy-plane from the positive x-axis)
+\end{itemize}
+
+To generate uniformly distributed random directions on the unit sphere, we cannot simply sample $\theta$ and $\phi$ uniformly. Instead, we use:
+
+\begin{equation}
+\theta = \arccos(1 - 2u), \quad u \sim \mathcal{U}[0,1]
+\end{equation}
+
+\begin{equation}
+\phi = 2\pi v, \quad v \sim \mathcal{U}[0,1]
+\end{equation}
+
+This ensures that the solid angle element $d\Omega = \sin\theta \, d\theta \, d\phi$ is uniformly distributed. The displacement at each step is then:
+
+\begin{equation}
+\begin{pmatrix} \Delta x \\ \Delta y \\ \Delta z \end{pmatrix} = \Delta r \begin{pmatrix} \sin\theta \cos\phi \\ \sin\theta \sin\phi \\ \cos\theta \end{pmatrix}
+\end{equation}
+
+where $\Delta r$ is the fixed step size.
+
+\subsection{Mean Squared Displacement in 3D}
+
+The Mean Squared Displacement for 3D motion is calculated as:
+
+\begin{equation}
+\text{MSD}(t) = \frac{1}{N} \sum_{i=1}^{N} \left[(x_i(t) - x_i(0))^2 + (y_i(t) - y_i(0))^2 + (z_i(t) - z_i(0))^2\right]
+\end{equation}
+
+For ideal 3D Brownian motion in an unbounded domain, the MSD grows linearly with time according to:
+
+\begin{equation}
+\text{MSD}(t) = 6Dt
+\end{equation}
+
+where $D$ is the diffusion coefficient. Note the factor of 6 (compared to 4 in 2D and 2 in 1D), reflecting the additional spatial dimension.
+
+\subsection{Plateau Behavior in Bounded Domains}
+
+In a bounded 3D domain with characteristic length $L$, the MSD reaches different plateau values depending on initialization:
+
+\begin{itemize}
+\item \textbf{Center initialization} (radial distribution): $\text{MSD}_{\infty} \approx L^2/4$
+\item \textbf{Random initialization} (uniform distribution): $\text{MSD}_{\infty} \approx L^2/2$
+\end{itemize}
+
+These values differ from the 2D case ($L^2/6$ and $L^2/3$ respectively) due to the geometric properties of 3D space.
+
+To ensure uniform radial distribution when initializing particles near the center, we use:
+
+\begin{equation}
+r = r_{\max} \sqrt[3]{u}, \quad u \sim \mathcal{U}[0,1]
+\end{equation}
+
+This accounts for the fact that spherical shells of larger radius contain more volume ($V \propto r^3$).
+
+\subsection{Collision Detection in 3D}
+
+The Euclidean distance between two particles in 3D is:
+
+\begin{equation}
+d = \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2 + (z_2 - z_1)^2}
+\end{equation}
+
+A collision occurs when $d < r_1 + r_2$, where $r_1$ and $r_2$ are the particle radii. Upon collision, the simulation implements a simplified bounce where the particle moves along the unit vector pointing away from the collision:
+
+\begin{equation}
+\hat{\mathbf{n}} = \frac{\mathbf{r}_1 - \mathbf{r}_2}{|\mathbf{r}_1 - \mathbf{r}_2|}
+\end{equation}
+
+The new displacement becomes $\Delta\mathbf{r}_{\text{new}} = \Delta r \, \hat{\mathbf{n}}$, effectively bouncing the particle away from the collision site.
+
+\section{Implementation}
+
+\subsection{Spatial Grid in 3D}
+
+The spatial grid optimization is even more critical in 3D than in 2D. Without optimization, collision detection requires checking all $\binom{N}{2} \approx N^2/2$ particle pairs. For $N=20000$, this means approximately 200 million distance calculations per time step, which is computationally infeasible.
+
+The simulation divides the 3D domain into cubic cells of size $2r$ (twice the particle radius). Each particle is assigned to its containing cell, and collision checks are restricted to particles in the same cell or the 26 neighboring cells (a $3 \times 3 \times 3$ cube minus the center).
+
+The spatial grid is implemented as a hash map:
+
+\begin{verbatim}
+Map<"cellX,cellY,cellZ", Particle[]>
+\end{verbatim}
+
+For evenly distributed particles, the average number of particles per cell is $k = N/C$, where $C$ is the total number of cells. Each particle checks approximately $27k$ other particles instead of $N$, reducing complexity from $O(N^2)$ to $O(N \times k)$.
+
+For the implemented parameters ($N=20000$, domain size $150^3$, cell size $2$), this provides approximately a 1000-fold speedup.
+
+\subsection{Dynamic Grid Updates}
+
+A critical implementation detail distinguishes the 3D version from the 2D version: the spatial grid must be dynamically updated after each particle movement. Unlike the 2D implementation which rebuilds the grid at each time step, the 3D version updates the grid incrementally as particles move:
+
+\begin{enumerate}
+\item Store the particle's old position $(x_{\text{old}}, y_{\text{old}}, z_{\text{old}})$
+\item Calculate new position after random walk and collision detection
+\item Remove particle from old cell's list
+\item Add particle to new cell's list (creating the cell entry if necessary)
+\end{enumerate}
+
+This incremental update strategy is essential for performance with 20000 particles, as rebuilding the entire grid 60 times per second would be prohibitively expensive.
+
+\subsection{Three.js Visualization}
+
+The 3D visualization uses the Three.js library with GPU-accelerated particle rendering:
+
+\begin{itemize}
+\item \textbf{Points geometry}: All particles rendered as a single \texttt{THREE.Points} object for GPU efficiency
+\item \textbf{BufferGeometry}: Particle positions stored in \texttt{Float32Array} for fast updates
+\item \textbf{OrbitControls}: Interactive camera allowing rotation, pan, and zoom
+\item \textbf{Wireframe boundary box}: Visual guide showing the simulation domain
+\item \textbf{Axes helper}: Small viewport showing coordinate axes orientation
+\end{itemize}
+
+The camera is automatically positioned to frame the entire simulation domain based on the field of view and domain dimensions.
+
+\subsection{Boundary Conditions}
+
+Reflective boundaries are implemented independently for each coordinate:
+
+\begin{equation}
+\text{if } x > x_{\max}: \quad x_{\text{new}} = x_{\max} - (x - x_{\max})
+\end{equation}
+
+Similarly for $x < x_{\min}$ and for the $y$ and $z$ coordinates. This ensures particles remain within the bounded domain while preserving the distance traveled (in the reflected direction).
+
+\section{Software Architecture}
+
+\subsection{System Overview}
+
+The 3D implementation extends the 2D architecture with Three.js for GPU-accelerated rendering:
+
+\begin{verbatim}
+index.ts (Entry Point)
+    |
+    v
+BrownianModel (AgentScript Model3D)
+    |-- turtles.create() -> 20000 particles in 3D
+    |-- step() -> Random walk + collision detection
+    |
+    +-- collisions.ts -> Spatial grid (3x3x3 cells)
+    |
+    +-- msd.ts (MSDChart) -> Chart.js (same as 2D)
+    |
+    +-- simulation.ts -> Three.js WebGL rendering
+\end{verbatim}
+
+\subsection{Core Modules}
+
+\textbf{BrownianModel} (\texttt{brownianModel.ts}): Extends AgentScript's \texttt{Model3D} for 3D space. Uses \texttt{turtles.create()} to instantiate 20000 particles with $(x,y,z)$ positions. The \texttt{step()} method performs spherical coordinate sampling for uniform 3D random walks.
+
+\textbf{Spatial Grid 3D} (\texttt{collisions.ts}): Hash map with keys \texttt{"x,y,z"}. Each particle checks 27 neighboring cells ($3 \times 3 \times 3$ cube). Implements incremental updates: when particle moves, remove from old cell and add to new cell without rebuilding entire grid.
+
+\textbf{Three.js Renderer} (\texttt{simulation.ts}): Creates \texttt{THREE.Scene}, \texttt{THREE.PerspectiveCamera}, and \texttt{THREE.WebGLRenderer}. Particles rendered as \texttt{THREE.Points} with \texttt{BufferGeometry} storing positions in \texttt{Float32Array}. Uses \texttt{OrbitControls} for interactive camera.
+
+\subsection{Execution Flow}
+
+Each animation frame (60 FPS):
+
+\begin{enumerate}
+\item \textbf{Random Walk}: For each particle, generate uniform 3D direction via $\theta = \arccos(1-2u)$, $\phi = 2\pi v$
+\item \textbf{Collision Check}: Query $3 \times 3 \times 3$ cell neighborhood, bounce if collision detected
+\item \textbf{Grid Update}: Remove from old cell (\texttt{oldCellKey}), add to new cell (\texttt{newCellKey})
+\item \textbf{Three.js Rendering}:
+   \begin{itemize}
+   \item Update \texttt{BufferGeometry} positions from particle data
+   \item \texttt{geometry.attributes.position.needsUpdate = true}
+   \item \texttt{controls.update()} for camera damping
+   \item \texttt{renderer.render(scene, camera)}
+   \end{itemize}
+\end{enumerate}
+
+\subsection{Three.js Integration}
+
+Key Three.js setup patterns:
+
+\begin{verbatim}
+// Scene and camera
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000)
+camera.position.set(worldSize, worldSize, worldSize)
+
+// Particle geometry
+const geometry = new THREE.BufferGeometry()
+const positions = new Float32Array(numParticles * 3)
+geometry.setAttribute('position',
+  new THREE.BufferAttribute(positions, 3))
+const particles = new THREE.Points(geometry, material)
+
+// OrbitControls
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true
+\end{verbatim}
+
+Each frame, particle positions are copied to the \texttt{Float32Array} and the buffer attribute is marked for GPU upload.
+
+\subsection{Performance Optimizations}
+
+\begin{itemize}
+\item \textbf{Incremental grid updates}: $O(1)$ per particle instead of $O(N)$ grid rebuild
+\item \textbf{GPU rendering}: \texttt{THREE.Points} renders 20000 particles in single draw call
+\item \textbf{BufferGeometry}: Direct memory access avoids per-particle object overhead
+\item \textbf{Spatial hashing}: String keys like \texttt{"5,3,-2"} enable fast cell lookup
+\end{itemize}
+
+\section{Results and Discussion}
+
+The 3D simulation successfully demonstrates key features of three-dimensional Brownian motion:
+
+\begin{enumerate}
+\item \textbf{Linear MSD growth}: Before boundary effects become significant, the MSD grows linearly according to $\text{MSD}(t) = 6Dt$, confirming the theoretical prediction for 3D diffusion.
+
+\item \textbf{Plateau behavior}: The MSD reaches different plateaus depending on initialization strategy, with the random initialization plateau being twice that of center initialization ($L^2/2$ vs $L^2/4$), consistent with 3D geometric expectations.
+
+\item \textbf{Uniform directional distribution}: The spherical coordinate sampling correctly produces uniform random walk directions, avoiding the directional bias that would result from naive angle sampling.
+
+\item \textbf{Computational efficiency}: The spatial grid optimization enables real-time simulation of 20000 particles at 60 FPS, demonstrating the critical importance of algorithmic optimization for large-scale particle systems.
+\end{enumerate}
+
+\subsection{Comparison with 2D}
+
+Several key differences emerge when comparing 3D and 2D Brownian motion:
+
+\begin{itemize}
+\item \textbf{Diffusion speed}: The MSD coefficient changes from 4D (2D) to 6D (3D), reflecting faster exploration of space in higher dimensions
+\item \textbf{Collision complexity}: 3D requires checking 27 cells (vs 9 in 2D), but the reduced particle density in 3D partially compensates
+\item \textbf{Visualization}: 3D requires sophisticated rendering (Three.js) and interactive camera controls, while 2D uses simple Canvas2D
+\item \textbf{Plateau values}: Different geometric factors lead to different plateau relationships (2D: $L^2/6$ and $L^2/3$; 3D: $L^2/4$ and $L^2/2$)
+\end{itemize}
+
+\section{Conclusion}
+
+This 3D Brownian motion simulation successfully extends classical random walk theory to three dimensions, demonstrating both the mathematical complexity and computational challenges of higher-dimensional diffusion. The implementation balances physical realism with computational efficiency through careful algorithm design, particularly the spatial grid optimization and incremental grid updates. The interactive Three.js visualization provides intuitive understanding of 3D particle dynamics, while the MSD analysis quantitatively confirms theoretical predictions. This project serves as both an educational tool for understanding diffusion processes and a foundation for more complex simulations involving particle interactions, external forces, or non-equilibrium dynamics.
+
+\end{document}

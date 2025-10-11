@@ -1,0 +1,341 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{3D Vicsek Swarm Model:\\Collective Behavior in Three-Dimensional Space}
+\author{Andrea Simone Costa}
+\date{October 11, 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This project extends the 2D Vicsek flocking model to three-dimensional space, providing a more realistic representation of collective motion in bird flocks, fish schools, and aerial drone swarms. While the fundamental principles remain the same - local alignment with neighbors plus noise leads to global coherent motion - the 3D implementation introduces additional complexity in directional sampling, visualization, and behavioral rules.
+
+The simulation implements four behavioral forces: alignment (matching neighbor directions), separation (maintaining personal space), cohesion (attraction to group centers), and boundary avoidance (repulsion from domain edges). These rules, inspired by the classic Boids model by Craig Reynolds (1987) and the Vicsek model (1995), produce emergent flocking patterns that resemble natural swarm behavior.
+
+\section{Mathematical Framework}
+
+\subsection{3D Direction Representation}
+
+Unlike 2D where directions are simply angles $\theta \in [0, 2\pi)$, 3D directions are unit vectors:
+
+\begin{equation}
+\hat{\mathbf{d}} = (d_x, d_y, d_z), \quad |\hat{\mathbf{d}}| = \sqrt{d_x^2 + d_y^2 + d_z^2} = 1
+\end{equation}
+
+These can be parameterized using spherical coordinates:
+\begin{equation}
+\hat{\mathbf{d}} = \begin{pmatrix} \sin\theta \cos\phi \\ \sin\theta \sin\phi \\ \cos\theta \end{pmatrix}
+\end{equation}
+
+where $\theta \in [0, \pi]$ is the polar angle (angle from the positive z-axis) and $\phi \in [0, 2\pi)$ is the azimuthal angle (angle in the xy-plane).
+
+\subsection{Uniform Random Directions}
+
+To generate uniformly distributed random directions on the unit sphere, we cannot simply sample $\theta$ and $\phi$ uniformly, as this would oversample near the poles. The correct approach uses the inverse cumulative distribution function:
+
+\begin{equation}
+\theta = \arccos(1 - 2u), \quad u \sim \mathcal{U}[0,1]
+\end{equation}
+\begin{equation}
+\phi = 2\pi v, \quad v \sim \mathcal{U}[0,1]
+\end{equation}
+
+This ensures uniform coverage of the sphere's surface.
+
+\subsection{Alignment Rule}
+
+Each agent $i$ calculates the average direction of all neighbors (including itself) within the interaction radius $r$:
+
+\begin{equation}
+\hat{\mathbf{d}}_{\text{align},i} = \frac{1}{|\mathcal{N}_i|} \sum_{j \in \mathcal{N}_i} \hat{\mathbf{d}}_j
+\end{equation}
+
+where $\mathcal{N}_i = \{j : |\mathbf{r}_j - \mathbf{r}_i| < r\}$ is the set of neighbors. The result is then normalized:
+
+\begin{equation}
+\hat{\mathbf{d}}_{\text{align},i} \to \frac{\hat{\mathbf{d}}_{\text{align},i}}{|\hat{\mathbf{d}}_{\text{align},i}|}
+\end{equation}
+
+\subsection{Separation Force}
+
+To prevent overlap and clustering, a repulsive force is applied when agents are closer than a separation threshold $d_{\text{sep}}$:
+
+\begin{equation}
+\mathbf{F}_{\text{sep},i} = s_{\text{sep}} \sum_{j \in \mathcal{N}_i, d_{ij} < d_{\text{sep}}} \frac{d_{\text{sep}} - d_{ij}}{d_{\text{sep}}} \frac{\mathbf{r}_i - \mathbf{r}_j}{d_{ij}}
+\end{equation}
+
+where $d_{ij} = |\mathbf{r}_i - \mathbf{r}_j|$ and $s_{\text{sep}}$ is the separation strength parameter.
+
+\subsection{Cohesion Force}
+
+Cohesion creates attraction toward the center of mass of nearby agents, promoting group cohesion:
+
+\begin{equation}
+\mathbf{C}_i = \frac{1}{|\mathcal{N}_i^{\text{coh}}|} \sum_{j \in \mathcal{N}_i^{\text{coh}}} \mathbf{r}_j
+\end{equation}
+
+where $\mathcal{N}_i^{\text{coh}}$ is the set of agents within cohesion radius $r_{\text{coh}}$. The cohesion force is then:
+
+\begin{equation}
+\mathbf{F}_{\text{coh},i} = s_{\text{coh}} (\mathbf{C}_i - \mathbf{r}_i)
+\end{equation}
+
+In this implementation, $r_{\text{coh}} = 2.5 \times r$, meaning agents are attracted to a larger group than they align with - a biologically realistic feature.
+
+\subsection{Order Parameter in 3D}
+
+The order parameter measures the degree of alignment:
+
+\begin{equation}
+\Phi = \frac{1}{N} \left|\sum_{i=1}^{N} \hat{\mathbf{d}}_i\right| = \frac{1}{N} \sqrt{\left(\sum_{i} d_{i,x}\right)^2 + \left(\sum_{i} d_{i,y}\right)^2 + \left(\sum_{i} d_{i,z}\right)^2}
+\end{equation}
+
+As in 2D, $\Phi = 0$ indicates complete disorder and $\Phi = 1$ indicates perfect alignment.
+
+\section{Implementation Details}
+
+\subsection{Velocity Heterogeneity}
+
+Unlike the standard Vicsek model where all agents move at the same speed, this implementation introduces realistic velocity variation. Each agent is assigned an individual speed:
+
+\begin{equation}
+v_i = v_0 (1 + \epsilon_i), \quad \epsilon_i \sim \mathcal{U}[-0.15, 0.15]
+\end{equation}
+
+where $v_0$ is the base speed. This $\pm 15\%$ variation creates more natural-looking dynamics, as agents occasionally overtake each other or lag behind.
+
+\subsection{Stochastic Noise Application}
+
+Rather than adding noise to every agent at every time step, the simulation uses stochastic noise application. Each agent has probability $p = 1/N_{\text{interval}}$ of receiving a random directional perturbation at each step. This creates smoother trajectories with occasional stochastic kicks, resembling biological decision-making better than constant noise.
+
+The noise vector is a uniformly sampled 3D unit vector (using the method described in Section 2.2), scaled by the noise level $\eta$:
+
+\begin{equation}
+\hat{\mathbf{d}}_{\text{noise}} = \eta \, \hat{\mathbf{n}}_{\text{random}}
+\end{equation}
+
+\subsection{Synchronous Updates}
+
+To ensure fairness and avoid artifacts from update ordering, all agent directions are computed based on the current state, stored temporarily, and then applied simultaneously:
+
+\begin{enumerate}
+\item For each agent, calculate new direction based on current positions and directions
+\item Store new direction in temporary array
+\item Apply all new directions simultaneously
+\item Update positions based on new directions
+\end{enumerate}
+
+\subsection{Three.js Visualization}
+
+Agents are rendered as 3D cone meshes (resembling arrows) pointing in their direction of motion. The cone orientation is achieved using quaternion rotation:
+
+\begin{verbatim}
+const up = new THREE.Vector3(0, 1, 0);
+const quaternion = new THREE.Quaternion();
+quaternion.setFromUnitVectors(up, directionVector);
+mesh.setRotationFromQuaternion(quaternion);
+\end{verbatim}
+
+The color of each agent is determined by mapping the direction vector components to RGB channels:
+
+\begin{equation}
+\text{Red} = \frac{d_x + 1}{2}, \quad \text{Green} = \frac{d_y + 1}{2}, \quad \text{Blue} = \frac{d_z + 1}{2}
+\end{equation}
+
+This creates visually distinctive colors for different directions, making it easy to identify aligned subgroups.
+
+\section{Behavioral Patterns}
+
+\subsection{Toroidal Vortices}
+
+One striking pattern that can emerge is a toroidal vortex: agents circulate in a doughnut-shaped pattern. This occurs when:
+\begin{itemize}
+\item Cohesion is strong enough to keep the group together
+\item Boundary avoidance creates inward-turning forces
+\item The combination produces a self-sustaining circular flow
+\end{itemize}
+
+Toroidal structures are observed in some biological systems, such as fish schools avoiding predators.
+
+\subsection{Fragmentation and Merging}
+
+At intermediate noise levels ($\eta \approx 0.3-0.5$), the swarm exhibits dynamic fragmentation and merging:
+\begin{itemize}
+\item The group spontaneously splits into multiple subgroups
+\item Subgroups move in different directions
+\item Occasionally, subgroups collide and merge back together
+\item The cycle repeats, creating complex spatiotemporal patterns
+\end{itemize}
+
+This behavior resembles fission-fusion dynamics observed in many social animals.
+
+\subsection{Effect of 3D vs 2D}
+
+Compared to 2D, the 3D model exhibits:
+\begin{itemize}
+\item \textbf{Reduced collision frequency}: Agents have more space to maneuver around each other
+\item \textbf{Lower critical density}: The minimum density needed for coherent flocking is lower in 3D
+\item \textbf{More complex trajectories}: The additional dimension allows for spiraling, looping, and weaving patterns impossible in 2D
+\item \textbf{Increased computational cost}: Neighbor finding in 3D requires checking a larger volume
+\end{itemize}
+
+\section{Comparison with Biological Systems}
+
+\subsection{Bird Flocks}
+
+Starling murmurations are perhaps the most spectacular example of 3D collective behavior. The simulation captures key features:
+\begin{itemize}
+\item Rapid alignment propagation (information spreads through the flock via local interactions)
+\item Density-dependent coordination (tighter groups show higher order)
+\item Dynamic shape changes (the flock morphs and flows without a fixed structure)
+\end{itemize}
+
+However, real starlings use topological (nearest-neighbor) rather than metric (fixed-radius) interactions, which makes the system more robust to density variations.
+
+\subsection{Fish Schools}
+
+Pelagic fish (like herring or tuna) school in 3D, often forming compressed ellipsoids or dynamic formations. The separation and cohesion forces in the model capture:
+\begin{itemize}
+\item Preferred spacing between individuals
+\item Attraction to the group center
+\item Coordinated turning maneuvers
+\end{itemize}
+
+The model does not include hydrodynamic interactions (water flow effects), which play a significant role in real fish schools.
+
+\subsection{Insect Swarms}
+
+Some insects (like midges or locusts) form swarms without fixed spacing. The cohesion-dominated regime of the model ($s_{\text{coh}} > s_{\text{sep}}$) produces cloud-like swarms that resemble insect aggregations.
+
+\section{Software Architecture}
+
+\subsection{System Overview}
+
+The 3D Vicsek implementation extends 2D with Three.js for 3D rendering and spherical coordinate sampling:
+
+\begin{verbatim}
+index.ts (Entry Point)
+    |
+    v
+VicsekModel3D (AgentScript Model3D)
+    |-- turtles.create(300) -> 3D agents
+    |-- step() -> Directions → Positions → Order parameter
+    |
+    +-- updateDirections() -> Alignment + separation + cohesion
+    +-- generate3DNoise() -> Uniform sphere sampling
+    |
+    v
+SwarmVisualization3D (Three.js)
+    |-- Scene + PerspectiveCamera + WebGLRenderer
+    |-- OrbitControls for interaction
+    |-- Cone meshes with direction-based RGB coloring
+\end{verbatim}
+
+\subsection{Core Modules}
+
+\textbf{VicsekModel3D} (\texttt{vicsekModel3D.ts}): Extends \texttt{Model3D} for 3D space. Each agent has direction vector $(d_x, d_y, d_z)$ with $|\mathbf{d}| = 1$. Implements four forces: alignment (mean direction), separation (repulsion), cohesion (attraction to center of mass), boundary avoidance. Individual velocity variation: $v_i = v_0(1 + \epsilon)$ where $\epsilon \sim \mathcal{U}[-0.15, 0.15]$.
+
+\textbf{SwarmVisualization3D} (\texttt{swarmVisualization3D.ts}): Creates \texttt{THREE.Scene} with cone meshes for agents. Uses \texttt{OrbitControls} for camera. Cone orientation via quaternion: \texttt{setFromUnitVectors(up, directionVector)}. Color mapping: RGB = $((d_x+1)/2, (d_y+1)/2, (d_z+1)/2)$.
+
+\subsection{Execution Flow}
+
+Each frame:
+
+\begin{enumerate}
+\item \textbf{Direction Update}:
+   \begin{itemize}
+   \item Find neighbors within \texttt{interactionRadius}
+   \item Mean direction: $\bar{\mathbf{d}} = (1/N_{\text{neighbors}}) \sum_j \mathbf{d}_j$
+   \item Separation: $\mathbf{F}_{\text{sep}} = \sum_{d_{ij} < d_{\text{sep}}} s(\mathbf{r}_i - \mathbf{r}_j)/d_{ij}$
+   \item Cohesion (radius $2.5 \times r$): $\mathbf{F}_{\text{coh}} = s_{\text{coh}}(\mathbf{C} - \mathbf{r}_i)$ where $\mathbf{C}$ = center of mass
+   \item Boundary avoidance: repel from walls within distance 3.0
+   \item Stochastic noise (prob $1/20$ per tick): add random 3D unit vector scaled by $\eta$
+   \item Normalize: $\mathbf{d} \to \mathbf{d}/|\mathbf{d}|$
+   \end{itemize}
+\item \textbf{Position Update}: $\mathbf{r} \to \mathbf{r} + v_i \mathbf{d}_i$, clamp to boundaries
+\item \textbf{Order Parameter}: $\Phi = (1/N)|\sum_i \mathbf{d}_i|$
+\item \textbf{Three.js Rendering}:
+   \begin{itemize}
+   \item Update cone positions: \texttt{mesh.position.set(x, y, z)}
+   \item Update orientations: quaternion from direction vector
+   \item Update colors: RGB from direction components
+   \item \texttt{controls.update()}, \texttt{renderer.render(scene, camera)}
+   \end{itemize}
+\end{enumerate}
+
+\subsection{Uniform 3D Sampling}
+
+Generate random direction uniformly on sphere (inverse CDF method):
+
+\begin{verbatim}
+theta = acos(1 - 2*u)  // u ~ U(0,1), polar angle
+phi = 2*PI*v           // v ~ U(0,1), azimuthal angle
+direction = {
+  x: sin(theta)*cos(phi),
+  y: sin(theta)*sin(phi),
+  z: cos(theta)
+}
+\end{verbatim}
+
+Naive uniform sampling of $\theta$ and $\phi$ would oversample poles.
+
+\subsection{Three.js Integration}
+
+Setup:
+
+\begin{verbatim}
+// Scene and camera
+scene = new THREE.Scene()
+camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000)
+camera.position.set(worldSize, worldSize, worldSize)
+
+// Agent cones
+coneGeometry = new THREE.ConeGeometry(0.15, 0.5, 8)
+for each agent:
+  material = new THREE.MeshBasicMaterial({ color })
+  mesh = new THREE.Mesh(coneGeometry, material)
+  scene.add(mesh)
+
+// OrbitControls
+controls = new OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true
+\end{verbatim}
+
+Quaternion orientation:
+
+\begin{verbatim}
+up = new THREE.Vector3(0, 1, 0)
+quaternion = new THREE.Quaternion()
+quaternion.setFromUnitVectors(up, directionVector)
+mesh.setRotationFromQuaternion(quaternion)
+\end{verbatim}
+
+This rotates the cone (default pointing up) to align with agent direction.
+
+\subsection{Cohesion Implementation}
+
+Cohesion radius $r_{\text{coh}} = 2.5 \times r_{\text{align}}$ ensures agents attracted to larger group than alignment range. Center of mass:
+
+\begin{verbatim}
+C = (1/N_coh) * sum(r_j for j in cohesion_neighbors)
+F_coh = s_coh * (C - r_i)
+\end{verbatim}
+
+Force strength $s_{\text{coh}} = 0.2$ provides gentle attraction without overwhelming alignment.
+
+\section{Conclusion}
+
+The 3D Vicsek model successfully captures essential features of collective motion in three-dimensional space. By extending the classic 2D model with cohesion forces, velocity heterogeneity, and realistic noise application, the simulation produces diverse behavioral patterns including toroidal vortices, fragmentation-merging cycles, and coherent flocking. The Three.js visualization with interactive camera controls allows intuitive exploration of 3D swarm dynamics. This project demonstrates how simple local rules - alignment, separation, cohesion - can generate complex emergent behavior resembling natural biological systems, providing insights into self-organization, collective decision-making, and active matter physics in three dimensions.
+
+\end{document}
