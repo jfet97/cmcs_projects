@@ -11,7 +11,8 @@
     "start": "pnpm dev",
     "clean": "rm -rf dist",
     "lint": "eslint src/**/*.ts --no-warn-ignored",
-    "lint:fix": "eslint src/**/*.ts --fix --no-warn-ignored"
+    "lint:fix": "eslint src/**/*.ts --fix --no-warn-ignored",
+    "check": "tsc --noEmit"
   },
   "keywords": [
     "brownian-motion",
