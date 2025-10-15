@@ -1,5 +1,4 @@
 import { Turtle } from "agentscript";
-import { CONFIG } from "./config";
 
 export interface ElasticParticle extends Turtle {
   mass: number;
@@ -83,91 +82,4 @@ export function maxwellBoltzmannVelocity2D(
   const vy = sigma * gaussianRandom();
 
   return { vx, vy };
-}
-
-// Calculate thermal equilibrium temperature from average kinetic energy
-export function calculateTemperatureFromKineticEnergy(averageKineticEnergy: number): number {
-  // In 2D: ⟨½mv²⟩ = ⟨½m(vx² + vy²)⟩ = kT  (equipartition theorem)
-  // Therefore: kT = ⟨½mv²⟩, so T = ⟨½mv²⟩/k
-  return averageKineticEnergy; // In reduced units where k=1
-}
-
-// Maxwell-Boltzmann thermal equilibrium calculations for emergent Brownian motion
-// No dynamic calculations needed - using fundamental statistical mechanics
-
-export function calculateEffectiveTemperature(
-  particleSpeed: number,
-  particleCount: number,
-  worldSize: number
-): number {
-  // effective thermal energy from particle bombardment
-  // calibrated to match actual simulation behavior
-  const worldArea = 2 * worldSize * (2 * worldSize);
-  const particleDensity = particleCount / worldArea;
-  const collisionCrossSection =
-    Math.PI * (CONFIG.LARGE_PARTICLE.radius + CONFIG.SMALL_PARTICLES.radius) ** 2;
-
-  // base effective temperature from speed squared (kinetic energy scaling)
-  const baseKT = particleSpeed * particleSpeed * 0.5; // kinetic energy scale
-
-  // density scaling: more particles → more bombardment → higher effective temperature
-  const densityFactor = Math.sqrt(particleDensity * collisionCrossSection * 1000); // scaled for reasonable values
-
-  const kT_effective = baseKT * densityFactor;
-
-  return Math.max(0.01, Math.min(2.0, kT_effective)); // tighter bounds for realism
-}
-
-export function calculateEffectiveFriction(
-  particleCount: number,
-  worldSize: number,
-  particleSpeed: number
-): number {
-  // effective friction from collision frequency
-  // calibrated to match simulation behavior and give realistic τ values
-  const worldArea = 2 * worldSize * (2 * worldSize);
-  const particleDensity = particleCount / worldArea;
-  const collisionCrossSection =
-    Math.PI * (CONFIG.LARGE_PARTICLE.radius + CONFIG.SMALL_PARTICLES.radius) ** 2;
-
-  // collision frequency scaling
-  const collisionFreq = particleDensity * collisionCrossSection * particleSpeed;
-
-  // momentum transfer efficiency (small mass vs large mass)
-  const massRatio = CONFIG.SMALL_PARTICLES.mass / CONFIG.LARGE_PARTICLE.mass;
-
-  // effective friction: higher collision rate → higher friction
-  // scaled to give τ = M/γ in range 5-20 ticks for typical parameters
-  const gamma_effective = collisionFreq * massRatio * 20.0; // adjusted scaling
-
-  return Math.max(1.0, Math.min(10.0, gamma_effective)); // bounds for τ ≈ 5-50
-}
-
-export function calculateBoundaryCorrection(worldSize: number): number {
-  // boundary effects in confined systems - calibrated for realistic values
-  // smaller confined space → faster decorrelation → smaller τ
-  const largeParticleRadius = CONFIG.LARGE_PARTICLE.radius;
-  const effectiveSize = worldSize - largeParticleRadius;
-
-  // for current world sizes (200-600), give corrections in range 0.5-0.9
-  // smaller world → stronger boundary effects → smaller correction
-  const sizeRatio = effectiveSize / 200.0; // normalize to typical size
-  const correction = Math.max(0.4, Math.min(0.9, 0.5 + 0.4 * Math.sqrt(sizeRatio)));
-
-  return correction;
-}
-
-export function calculateDynamicExpectedValues(
-  particleCount: number,
-  particleSpeed: number,
-  worldSize: number
-) {
-  const kT_eff = calculateEffectiveTemperature(particleSpeed, particleCount, worldSize);
-  const gamma_eff = calculateEffectiveFriction(particleCount, worldSize, particleSpeed);
-
-  return {
-    expectedDiffusion: kT_eff / gamma_eff, // D = kT/γ (Einstein relation in reduced units)
-    expectedEquipartition: (2 * kT_eff) / CONFIG.LARGE_PARTICLE.mass, // ⟨v²⟩ = 2*kT/M in 2D
-    expectedDecayTime: CONFIG.LARGE_PARTICLE.mass / gamma_eff // τ = M/γ
-  };
 }
