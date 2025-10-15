@@ -100,7 +100,11 @@ export class ElasticModel extends Model {
         do {
           x = (Math.random() - 0.5) * worldWidth * 0.95;
           y = (Math.random() - 0.5) * worldHeight * 0.95;
-          distance = Math.sqrt(x * x + y * y);
+
+          // calculate distance from large particle's actual position
+          const dx = x - this.largeParticle.x;
+          const dy = y - this.largeParticle.y;
+          distance = Math.sqrt(dx * dx + dy * dy);
         } while (distance < CONFIG.LARGE_PARTICLE.radius * 3);
 
         turtle.setxy(x, y);
