@@ -144,7 +144,10 @@ function getNearbyTurtles(
 
   const key = hash(mainCellX, mainCellY, mainCellZ);
 
-  // iterate through the 3×3×3 grid cells surrounding the main cell
+  // first, add turtles from the current cell
+  nearbyTurtles.push(...(grid.get(key)?.data ?? []));
+
+  // then iterate through the 3×3×3 grid cells surrounding the main cell
   for (const link of grid.get(key)?.links ?? []) {
     nearbyTurtles.push(...(grid.get(link)?.data ?? []));
   }
