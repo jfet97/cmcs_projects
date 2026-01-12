@@ -1,10 +1,7 @@
-// File: src/types/agentscript.d.ts
-
-// Dichiariamo un modulo per 'agentscript'.
-// Tutto ciò che è qui dentro definisce i tipi per `import { ... } from 'agentscript'`
+// everything inside here defines the types for `import { ... } from 'agentscript'`
 declare module 'agentscript' {
 
-  // Definiamo la forma di una collezione di turtles
+  // shape of a turtles collection
   export interface Turtles {
     create(count: number, callback?: (turtle: any) => void): void;
     ask(callback: (turtle: any, i: number) => void): void;
@@ -12,11 +9,11 @@ declare module 'agentscript' {
     some: (callback: (turtle: any, i: number) => boolean) => boolean;
   }
 
-  // Definiamo la classe base Turtle con le sue proprietà e metodi
+  // base Turtle class with its properties and methods
   export class Turtle {
     constructor(...args: any[]);
 
-    // Proprietà che stiamo usando nel nostro codice
+    // properties we are using in our code
     x: number;
     y: number;
     color: string;
@@ -28,15 +25,15 @@ declare module 'agentscript' {
         height: number;
     };
 
-    // Metodi che stiamo usando
+    // methods we are using
     setxy(x: number, y: number): void;
   }
 
-  // Definiamo la classe base Model
+  // base Model class
   export class Model {
     constructor(...args: any[]);
 
-    // Proprietà che stiamo usando
+    // properties we are using
     turtles: Turtles;
     ticks: number;
 
@@ -47,16 +44,16 @@ declare module 'agentscript' {
       maxY: number;
     }
 
-    // Metodi che stiamo usando
+    // methods we are actually using
     startup(strategy: "center" | "random"): void;
     step(): void;
   }
 
-  // Definiamo la classe World
+  // World class
   export class World {
     constructor(model: Model, element: HTMLElement | null);
-    
-    // Metodi di rendering possibili
+
+    // possible rendering methods
     start?(): void;
     draw?(): void;
     render?(): void;
