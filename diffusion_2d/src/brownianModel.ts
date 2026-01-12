@@ -62,7 +62,7 @@ export class BrownianModel extends Model {
    * Executed once, at the beginning, to config the simulation
    */
   override startup(strategy: "center" | "random") {
-    this.numParticles = 4000;
+    this.numParticles = 20000;
 
     // setup turtles
     this.turtles.create(this.numParticles, (turtle: BrownianParticleTurtle) => {

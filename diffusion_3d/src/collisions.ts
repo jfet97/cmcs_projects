@@ -41,7 +41,7 @@ export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGr
           for (let dz = -1; dz <= 1; dz++) {
             if (dx === 0 && dy === 0 && dz === 0) continue; // skip the center cell
             const key = hash(cellX + dx, cellY + dy, cellZ + dz);
-            links.push(key);
+            links.unshift(key);
           }
         }
       }
@@ -49,7 +49,7 @@ export function createSpatialGrid(turtles: Turtles, cellSize: number): SpatialGr
       grid.set(key, { data: [turtle], links });
     } else {
       const entry = grid.get(key)!;
-      entry.data.push(turtle);
+      entry.data.unshift(turtle);
     }
   });
 
@@ -111,14 +111,14 @@ function updateParticleInGrid(
         for (let dz = -1; dz <= 1; dz++) {
           if (dx === 0 && dy === 0 && dz === 0) continue; // skip the center cell
           const key = hash(newX + dx, newY + dy, newZ + dz);
-          links.push(key);
+          links.unshift(key);
         }
       }
     }
 
     grid.set(newKey, { data: [turtle], links });
   } else {
-    grid.get(newKey)!.data.push(turtle);
+    grid.get(newKey)!.data.unshift(turtle);
   }
 }
 
@@ -145,11 +145,11 @@ function getNearbyTurtles(
   const key = hash(mainCellX, mainCellY, mainCellZ);
 
   // first, add turtles from the current cell
-  nearbyTurtles.push(...(grid.get(key)?.data ?? []));
+  nearbyTurtles.unshift(...(grid.get(key)?.data ?? []));
 
   // then iterate through the 3×3×3 grid cells surrounding the main cell
   for (const link of grid.get(key)?.links ?? []) {
-    nearbyTurtles.push(...(grid.get(link)?.data ?? []));
+    nearbyTurtles.unshift(...(grid.get(link)?.data ?? []));
   }
 
   return nearbyTurtles;
