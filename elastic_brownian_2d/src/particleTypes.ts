@@ -14,7 +14,6 @@ export interface ElasticParticle extends Turtle {
   lastCollisionTick: number; // track last collision to prevent rapid repeated collisions
 }
 
-// TODO: per troppi campi mi chiedo se freca
 export interface LargeParticleState {
   x0: number;
   y0: number; // initial position
