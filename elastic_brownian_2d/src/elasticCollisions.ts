@@ -150,6 +150,7 @@ export function performElasticCollision(
   const relativeVy = particle2.vy - particle1.vy;
 
   // relative velocity component along collision normal: v_rel · n̂
+  // we only care about whether and how fast the distance between centers changes
   const relativeVelNormal = relativeVx * nx + relativeVy * ny;
 
   // skip if particles are separating (v_rel · n̂ > 0)
@@ -172,7 +173,7 @@ export function performElasticCollision(
   const v1_normal_new = ((m1 - m2) * v1_normal + 2 * m2 * v2_normal) / totalMass;
   const v2_normal_new = ((m2 - m1) * v2_normal + 2 * m1 * v1_normal) / totalMass;
 
-  // compute velocity changes along normal direction
+  // compute velocity changes along normal direction (scalars)
   const dv1_normal = v1_normal_new - v1_normal;
   const dv2_normal = v2_normal_new - v2_normal;
 
