@@ -101,6 +101,14 @@ export class VicsekModel3D extends Model3D {
    * 4. Add separation forces
    * 5. Add cohesion forces (attraction to group center)
    * 6. Add random noise to create realistic flocking behavior
+   *
+   * Force normalization strategy:
+   * - Normalized forces (constant magnitude): alignment, cohesion, noise
+   *   These represent steady behavioral influences that blend smoothly.
+   * - Non-normalized forces (variable magnitude): separation, boundary avoidance
+   *   These are emergency/safety forces that must override normal behavior
+   *   when critical (e.g., too close to another agent or to a wall).
+   *   Their magnitude scales with urgency (closer = stronger).
    */
   updateDirections() {
     const agents: VicsekAgent3D[] = [];
