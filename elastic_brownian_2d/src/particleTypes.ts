@@ -10,7 +10,6 @@ export interface ElasticParticle extends Turtle {
   isLarge: boolean; // particle type identifier
   speed: number; // current speed magnitude
 
-  // TODO: freca?
   lastCollisionTick: number; // track last collision to prevent rapid repeated collisions
 }
 
