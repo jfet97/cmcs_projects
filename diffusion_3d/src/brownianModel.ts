@@ -106,7 +106,12 @@ export class BrownianModel extends Model3D {
       turtle.initialState = { x0: turtle.x, y0: turtle.y, z0: turtle.z };
     });
 
-    this.chart = new MSDChart(this.turtles);
+    // expected MSD plateau depends on initialization strategy:
+    // center: L²/4, random: L²/2 (where L is the world size)
+    const L = this.viewWidth; // assumes cubic world
+    const expectedPlateau = strategy === "center" ? (L * L) / 4 : (L * L) / 2;
+
+    this.chart = new MSDChart(this.turtles, expectedPlateau);
 
     // initialize Three.js 3D visualization
     this.simulation = new Simulation(this.turtles, {

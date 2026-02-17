@@ -25,9 +25,14 @@ export class MSDChart {
   chart!: Chart;
   msdData: number[];
   turtles!: Turtles;
-  constructor(turtles: Turtles) {
+  expectedPlateau: number;
+  infoElement: HTMLElement | null;
+
+  constructor(turtles: Turtles, expectedPlateau: number) {
     this.msdData = [];
     this.turtles = turtles;
+    this.expectedPlateau = expectedPlateau;
+    this.infoElement = document.getElementById("msd-info");
 
     const ctx = (document.getElementById("msd-chart") as HTMLCanvasElement)?.getContext("2d");
     if (!ctx) {
@@ -89,5 +94,9 @@ export class MSDChart {
     }
     this.chart.data.datasets[0].data.push(msd);
     this.chart.update("none");
+
+    if (this.infoElement) {
+      this.infoElement.textContent = `MSD: ${msd.toFixed(1)} | Expected plateau: ${this.expectedPlateau.toFixed(1)}`;
+    }
   }
 }
