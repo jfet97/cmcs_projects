@@ -133,47 +133,64 @@ function updateParticleInGrid(
   }
 }
 
+// module-level bounce result to avoid allocating an object per collision
+let bounceX = 0;
+let bounceY = 0;
+let bounceZ = 0;
+
 /**
- * Retrieves all BrownianParticleTurtle instances located in the 3×3×3 grid cells surrounding a given (x, y, z) position.
- *
- * @param x - The x-coordinate of the position to search around.
- * @param y - The y-coordinate of the position to search around.
- * @param z - The z-coordinate of the position to search around.
- * @param grid - The spatial grid containing turtles, along with the cell size.
- * @returns An array of BrownianParticleTurtle objects found in the neighboring cells.
+ * Computes the bounce position for a particle colliding with another.
+ * Result is stored in module-level bounceX/bounceY/bounceZ variables to avoid allocation.
+ * Returns true if a bounce was applied, false if particles are perfectly overlapped.
  */
-function getNearbyTurtles(
-  x: number,
-  y: number,
-  z: number,
-  { grid, size }: SpatialGrid
-): BrownianParticleTurtle[] {
-  const nearbyTurtles: BrownianParticleTurtle[] = [];
-  const mainCellX = Math.floor(x / size);
-  const mainCellY = Math.floor(y / size);
-  const mainCellZ = Math.floor(z / size);
+function computeBounce(
+  turtle: BrownianParticleTurtle,
+  other: BrownianParticleTurtle,
+  distSq: number
+): boolean {
+  // particles are perfectly overlapped; allow original random move to separate them
+  if (distSq === 0) return false;
 
-  const key = hash(mainCellX, mainCellY, mainCellZ);
-  const entry = grid.get(key);
+  // sqrt only computed on actual collisions (rare), not on every distance check
+  const distance = Math.sqrt(distSq);
+  const invDist = 1 / distance;
 
-  // first, add turtles from the current cell
-  if (entry) {
-    for (let i = 0; i < entry.data.length; i++) {
-      nearbyTurtles.push(entry.data[i]);
-    }
+  // move particle away from the collision along the unit bounce direction:
+  // bounce = position + stepSize × (position - other) / |position - other|
+  bounceX = turtle.x + turtle.stepSize * (turtle.x - other.x) * invDist;
+  bounceY = turtle.y + turtle.stepSize * (turtle.y - other.y) * invDist;
+  bounceZ = turtle.z + turtle.stepSize * (turtle.z - other.z) * invDist;
 
-    // then iterate through the 3×3×3 grid cells surrounding the main cell
-    for (const link of entry.links) {
-      const linkedEntry = grid.get(link);
-      if (linkedEntry) {
-        for (let i = 0; i < linkedEntry.data.length; i++) {
-          nearbyTurtles.push(linkedEntry.data[i]);
-        }
-      }
+  return true;
+}
+
+/**
+ * Checks for a collision between turtle and a cell's particles.
+ * Returns true on first collision found (and sets bounceX/Y/Z).
+ */
+function checkCellCollisions(
+  turtle: BrownianParticleTurtle,
+  data: BrownianParticleTurtle[],
+  newX: number,
+  newY: number,
+  newZ: number,
+  minDistSq: number
+): boolean {
+  for (let i = 0; i < data.length; i++) {
+    const other = data[i];
+    if (other === turtle) continue;
+
+    // squared euclidean distance: avoids sqrt for non-colliding pairs
+    const distSq = (other.x - newX) ** 2 + (other.y - newY) ** 2 + (other.z - newZ) ** 2;
+
+    // collision occurs when d² < (r₁ + r₂)²
+    if (distSq < minDistSq) {
+      computeBounce(turtle, other, distSq);
+      return true;
     }
   }
 
-  return nearbyTurtles;
+  return false;
 }
 
 /**
@@ -231,51 +248,41 @@ export function moveParticleWithOptimizedCollisions(
   let newY = turtle.y + dy;
   let newZ = turtle.z + dz;
 
-  // check for collisions with other turtles surrounding the new position
-  const nearbyTurtles = getNearbyTurtles(newX, newY, newZ, { grid, size });
+  /**
+   * Inline collision detection: iterates directly over grid cells instead of
+   * collecting nearby particles into an intermediate array. This avoids
+   * allocating a new array per particle per step (200k allocations/step at scale).
+   * Early exit on first collision via checkCellCollisions + break.
+   */
+  const mainKey = hash(Math.floor(newX / size), Math.floor(newY / size), Math.floor(newZ / size));
+  const mainEntry = grid.get(mainKey);
 
-  // all particles have the same size, so minDistance is constant
+  // all particles have the same size, so minDistance² is constant
   const minDistSq = (turtle.size + turtle.size) ** 2;
 
-  for (const other of nearbyTurtles) {
-    // ignore self-collision
-    if (other === turtle) continue;
+  let collided = false;
 
-    // squared euclidean distance in 3D (avoids expensive sqrt)
-    const distSq = (other.x - newX) ** 2 + (other.y - newY) ** 2 + (other.z - newZ) ** 2;
+  if (mainEntry) {
+    // check particles in the same cell first (most likely collision candidates)
+    collided = checkCellCollisions(turtle, mainEntry.data, newX, newY, newZ, minDistSq);
 
-    // collision occurs when d² < (r₁ + r₂)²
-    if (distSq < minDistSq) {
-      /**
-       * Simple bounce collision in 3D
-       * Uses unit vector in direction away from collision point
-       * Bounce direction: (r₁ - r₂) / |r₁ - r₂|
-       * No momentum/energy conservation (particles have no velocity memory)
-       */
+    // check the 26 neighboring cells only if no collision found yet
+    if (!collided) {
+      for (let l = 0; l < mainEntry.links.length; l++) {
+        const linkedEntry = grid.get(mainEntry.links[l]);
+        if (!linkedEntry) continue;
 
-      // compute bounce vector pointing from 'other' particle to this particle
-      const bounceVectorX = turtle.x - other.x;
-      const bounceVectorY = turtle.y - other.y;
-      const bounceVectorZ = turtle.z - other.z;
-
-      // normalize the bounce vector to get unit direction (sqrt only on actual collisions)
-      if (distSq > 0) {
-        const distance = Math.sqrt(distSq);
-        const unitBounceX = bounceVectorX / distance;
-        const unitBounceY = bounceVectorY / distance;
-        const unitBounceZ = bounceVectorZ / distance;
-
-        // move away from the collision along the bounce direction
-        newX = turtle.x + turtle.stepSize * unitBounceX;
-        newY = turtle.y + turtle.stepSize * unitBounceY;
-        newZ = turtle.z + turtle.stepSize * unitBounceZ;
-      } else {
-        // particles are perfectly overlapped; allow original random move to separate them
+        collided = checkCellCollisions(turtle, linkedEntry.data, newX, newY, newZ, minDistSq);
+        if (collided) break;
       }
-
-      // early exit after handling the first collision
-      // break;
     }
+  }
+
+  // apply bounce result from module-level variables (set by computeBounce)
+  if (collided) {
+    newX = bounceX;
+    newY = bounceY;
+    newZ = bounceZ;
   }
 
   /**
