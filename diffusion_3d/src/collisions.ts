@@ -3,17 +3,22 @@ import { type BrownianParticleTurtle } from "./brownianModel";
 
 interface SpatialGridEntry {
   data: BrownianParticleTurtle[];
-  links: `${number},${number},${number}`[];
+  links: number[];
 }
 
-// a spatial grid is a map where the key is a string representation of the cell coordinates
+// a spatial grid is a map where the key is a numeric hash of the cell coordinates
 export interface SpatialGrid {
-  grid: Map<`${number},${number},${number}`, SpatialGridEntry>;
+  grid: Map<number, SpatialGridEntry>;
   size: number;
 }
 
-function hash(x: number, y: number, z: number): `${number},${number},${number}` {
-  return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}` as const;
+// spatial hashing using large primes to minimize collisions
+const P1 = 73856093;
+const P2 = 19349663;
+const P3 = 83492791;
+
+function hash(x: number, y: number, z: number): number {
+  return (Math.floor(x) * P1) ^ (Math.floor(y) * P2) ^ (Math.floor(z) * P3);
 }
 
 /**
@@ -229,18 +234,18 @@ export function moveParticleWithOptimizedCollisions(
   // check for collisions with other turtles surrounding the new position
   const nearbyTurtles = getNearbyTurtles(newX, newY, newZ, { grid, size });
 
+  // all particles have the same size, so minDistance is constant
+  const minDistSq = (turtle.size + turtle.size) ** 2;
+
   for (const other of nearbyTurtles) {
     // ignore self-collision
     if (other === turtle) continue;
 
-    // euclidean distance in 3D: d = √[(x₂-x₁)² + (y₂-y₁)² + (z₂-z₁)²]
-    const distance = Math.sqrt(
-      (other.x - newX) ** 2 + (other.y - newY) ** 2 + (other.z - newZ) ** 2
-    );
-    const minDistance = turtle.size + other.size;
+    // squared euclidean distance in 3D (avoids expensive sqrt)
+    const distSq = (other.x - newX) ** 2 + (other.y - newY) ** 2 + (other.z - newZ) ** 2;
 
-    // collision occurs when d < r₁ + r₂
-    if (distance < minDistance) {
+    // collision occurs when d² < (r₁ + r₂)²
+    if (distSq < minDistSq) {
       /**
        * Simple bounce collision in 3D
        * Uses unit vector in direction away from collision point
@@ -253,8 +258,9 @@ export function moveParticleWithOptimizedCollisions(
       const bounceVectorY = turtle.y - other.y;
       const bounceVectorZ = turtle.z - other.z;
 
-      // normalize the bounce vector to get unit direction
-      if (distance > 0) {
+      // normalize the bounce vector to get unit direction (sqrt only on actual collisions)
+      if (distSq > 0) {
+        const distance = Math.sqrt(distSq);
         const unitBounceX = bounceVectorX / distance;
         const unitBounceY = bounceVectorY / distance;
         const unitBounceZ = bounceVectorZ / distance;
