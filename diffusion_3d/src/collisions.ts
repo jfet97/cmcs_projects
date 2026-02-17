@@ -112,6 +112,12 @@ function updateParticleInGrid(
       data[index] = data[data.length - 1];
       data.pop();
     }
+
+    // delete empty cells from the grid so neighbor lookups return undefined immediately
+    // instead of finding cells with data.length === 0
+    if (data.length === 0) {
+      grid.delete(oldKey);
+    }
   }
 
   // add particle to new grid cell
@@ -263,8 +269,14 @@ export function moveParticleWithOptimizedCollisions(
   let collided = false;
 
   if (mainEntry) {
-    // check particles in the same cell first (most likely collision candidates)
-    collided = checkCellCollisions(turtle, mainEntry.data, newX, newY, newZ, minDistSq);
+    // at low density most particles are alone in their cell: skip collision checks entirely
+    // if the current cell only contains this turtle and no neighbor cells are populated
+    const dominated = mainEntry.data.length <= 1;
+
+    if (!dominated) {
+      // current cell has other particles — check them first (most likely collision candidates)
+      collided = checkCellCollisions(turtle, mainEntry.data, newX, newY, newZ, minDistSq);
+    }
 
     // check the 26 neighboring cells only if no collision found yet
     if (!collided) {
