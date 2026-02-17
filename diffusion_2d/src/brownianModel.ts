@@ -89,7 +89,12 @@ export class BrownianModel extends Model {
       turtle.initialState = { x0: turtle.x, y0: turtle.y };
     });
 
-    this.chart = new MSDChart(this.turtles);
+    // expected MSD plateau depends on initialization strategy:
+    // center: L²/6, random: L²/3 (where L is the world size, for 2D)
+    const L = this.viewWidth;
+    const expectedPlateau = strategy === "center" ? (L * L) / 6 : (L * L) / 3;
+
+    this.chart = new MSDChart(this.turtles, expectedPlateau);
     this.simulation = new Simulation(this.turtles);
   }
 

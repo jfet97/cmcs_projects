@@ -1,19 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Brownian Motion Simulation</title>
-  <!-- Link to the stylesheet -->
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Abstract Brownian Motion (Random Walk)</h1>
-  <div class="container">
-    <canvas id="world" width="500" height="500"></canvas>
-    <div id="chart-container">
-      <canvas id="msd-chart"></canvas>
+  <head>
+    <title>Brownian Motion Simulation</title>
+    <!-- Link to the stylesheet -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>Abstract Brownian Motion (Random Walk)</h1>
+    <div class="container">
+      <canvas id="world" width="500" height="500"></canvas>
+      <div id="chart-wrapper">
+        <div id="chart-container">
+          <canvas id="msd-chart"></canvas>
+        </div>
+        <div id="msd-info"></div>
+      </div>
     </div>
-  </div>
 
-  <script type="module" src="index.ts"></script>
-</body>
+    <script type="module" src="index.ts"></script>
+  </body>
 </html>
