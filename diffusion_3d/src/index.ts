@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const WORLD_WIDTH = SIZE;
   const WORLD_HEIGHT = SIZE;
   const WORLD_DEPTH = SIZE;
-  const NUM_PARTICLES = 20000;
+  const NUM_PARTICLES = 50000;
 
   // world bounds (centered coordinate system)
   const bounds = {
