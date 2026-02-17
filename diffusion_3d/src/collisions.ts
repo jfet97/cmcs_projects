@@ -110,7 +110,7 @@ function updateParticleInGrid(
       for (let dy = -1; dy <= 1; dy++) {
         for (let dz = -1; dz <= 1; dz++) {
           if (dx === 0 && dy === 0 && dz === 0) continue; // skip the center cell
-          const key = hash(newX + dx, newY + dy, newZ + dz);
+          const key = hash(newCellX + dx, newCellY + dy, newCellZ + dz);
           links.unshift(key);
         }
       }
